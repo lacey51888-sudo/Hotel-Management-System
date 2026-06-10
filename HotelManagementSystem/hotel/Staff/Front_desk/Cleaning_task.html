@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleaning Tasks</title>
+    <link rel="stylesheet" href="../../global.css">
+    <link rel="stylesheet" href="../global_modal.css">
+    <link rel="stylesheet" href="cleaning.css">
+<body>
+    <div class="app-container">
+        <!-- sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">🏨 Hotel System</div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <span class="nav-icon">🏠</span>
+                    <a href="./Order_room.html" class="nav-link">Choose Room Type</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <a href="./Check_in_out.html" class="nav-link">Check In/Out</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <a href="./Cleaning_task.html" class="nav-link">Services</a>
+                </li>
+                <li class="nav-item" id="kpiMenuItem" style="display:none;">
+                    <span class="nav-icon">📊</span>
+                    <a href="../Manager/KPI.html" class="nav-link">Performance</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="./Front_desk_information.html" class="nav-link">Personal Account</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="../Login_Register.html" class="nav-link">Log Out</a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div class="header-box">
+                <h1>Cleaning Task Management</h1>
+                <button class="new-task-btn" onclick="showModal()">+ New Task</button>
+            </div>
+
+            <div class="table-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Task ID</th>
+                            <th>Room Number</th>
+                            <th>Scheduled Time</th>
+                            <th>Assigned Cleaner</th>
+                            <th>Status</th>
+                            <th>Created Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskList"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- new task modal-->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <h3>New Cleaning Task</h3>
+            <div class="form-group">
+                <label>Room Number</label>
+                <input type="text" id="room" placeholder="e.g. 101">
+            </div>
+            <div class="form-group">
+                <label>Cleaning Date</label>
+                <input type="date" id="date">
+            </div>
+            <div class="form-group">
+                <label>Assign Cleaner</label>
+                <select id="cleaner">
+                    <option value="">Select Cleaner</option>
+                    <!-- Options will be loaded from API -->
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Scheduled Time</label>
+                <div class="datetime-group">
+                    <div>
+                        <label>Start</label>
+                        <input type="time" id="start">
+                    </div>
+                    <div>
+                        <label>End</label>
+                        <input type="time" id="end">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Notes (Optional)</label>
+                <input type="text" id="notes" placeholder="Special requirements...">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn btn-confirm" onclick="addTask()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // RBAC guard: only reception or manager
+        (function(){
+            try {
+                const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+                const role = user && user.role_id;
+                if (!role || (role !== 'reception' && role !== 'manager')) {
+                    alert('No permission to access cleaning task management');
+                    window.location.href = '../Login_Register.html';
+                    return;
+                }
+                // If manager, show KPI menu item
+                if (role === 'manager') {
+                    const kpiMenuItem = document.getElementById('kpiMenuItem');
+                    if (kpiMenuItem) kpiMenuItem.style.display = 'block';
+                }
+            } catch(e) {
+                window.location.href = '../Login_Register.html';
+                return;
+            }
+        })();
+        // load page
+        async function fetchJSON(url, options){
+            try {
+                const r = await fetch(url, options);
+                const text = await r.text();
+                try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+            } catch(e) {
+                console.error('network_error', url, e);
+                return { ok:false, error:'network_error' };
+            }
+        }
+        window.onload = async function() {
+            document.getElementById('date').value = new Date().toISOString().split('T')[0];
+            
+            // Load cleaners from API
+            const usersResp = await fetchJSON('http://localhost/api/users_get.php?user_type=cleaner');
+            const cleanerSelect = document.getElementById('cleaner');
+            cleanerSelect.innerHTML = '<option value="">Select Cleaner</option>';
+            
+            if (usersResp && usersResp.ok && usersResp.data.length > 0) {
+                usersResp.data.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.user_id;
+                    opt.textContent = c.user_name;
+                    cleanerSelect.appendChild(opt);
+                });
+            } else {
+                // No cleaners found in database
+                console.warn('No cleaners found in database');
+            }
+            
+            // close modal
+            document.getElementById('taskModal').onclick = function(e) {
+                if (e.target === this) closeModal();
+            };
+
+            const tbody = document.getElementById('taskList');
+            const apiTasks = await fetchJSON('http://localhost/api/tasks_get.php');
+            if (apiTasks && apiTasks.ok) {
+                apiTasks.data.forEach(t=>{
+                    const tr = document.createElement('tr');
+                    const cls = t.task_status==='completed'?'status-completed': t.task_status==='in-progress'?'status-in-progress':'status-pending';
+                    const statusText = t.task_status==='completed'?'Completed': t.task_status==='in-progress'?'In Progress':'Pending';
+                    tr.innerHTML = `
+                        <td>${t.task_id}</td>
+                        <td><strong>${t.room_id}</strong></td>
+                        <td>${t.wish_time||''}</td>
+                        <td>${t.user_id||'Unassigned'}</td>
+                        <td><span class="status-badge ${cls}">${statusText}</span></td>
+                        <td>${t.actual_start_time || 'Not started'}</td>
+                        <td>
+                            <button class="action-btn btn-complete" onclick="completeTask(this)" ${t.task_status==='completed'?'disabled':''}>Complete</button>
+                            <button class="action-btn btn-delete" onclick="deleteTask(this)">Delete</button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+        };
+
+        // close / show modal
+        function showModal() {
+            document.getElementById('taskModal').style.display = 'block';
+        }
+        function closeModal() {
+            document.getElementById('taskModal').style.display = 'none';
+            document.getElementById('room').value = '';
+            document.getElementById('cleaner').value = '';
+            document.getElementById('start').value = '';
+            document.getElementById('end').value = '';
+            document.getElementById('notes').value = '';
+        }
+
+        // add task
+        async function addTask() {
+            const room = document.getElementById('room').value;
+            const date = document.getElementById('date').value;
+            const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+            const cleaner = document.getElementById('cleaner').value;
+            const notes = document.getElementById('notes').value;
+
+            // check
+            if (!room || !date || !start) {
+                alert('Please fill required fields (Room, Date, Start Time)!');
+                return;
+            }
+            
+            if (end && start >= end) {
+                alert('End time must be later than start time!');
+                return;
+            }
+
+            // Format wish_time as "YYYY-MM-DD HH:MM:SS"
+            const wishTime = `${date} ${start}:00`;
+            
+            // Call API to create task
+            const resp = await fetchJSON('http://localhost/api/task_create.php', {
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body: JSON.stringify({ 
+                    room_id: room, 
+                    cleaner_id: cleaner || '', 
+                    wish_time: wishTime 
+                })
+            });
+            
+            if (resp && resp.ok) {
+                alert(`Task ${resp.task_id} created successfully!`);
+                closeModal();
+                // Reload the page to show the new task
+                location.reload();
+            } else {
+                alert('Failed to create task: ' + (resp?.error || 'Unknown error'));
+            }
+        }
+
+        // finish
+        async function completeTask(btn) {
+            if (!confirm('Mark as completed?')) return;
+            
+            const row = btn.closest('tr');
+            const statusCell = row.cells[4];
+            const id = row.cells[0].textContent;
+            
+            const resp = await fetchJSON('http://localhost/api/task_update_status.php', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ task_id: id, task_status: 'completed' })
+            });
+            
+            if (resp && resp.ok) {
+                statusCell.innerHTML = '<span class="status-badge status-completed">Completed</span>';
+                btn.disabled = true;
+                alert('Task marked as completed!');
+            } else {
+                alert('Failed to update task status');
+            }
+        }
+
+        // delete
+        async function deleteTask(btn) {
+            if (!confirm('Delete this task?')) return;
+            
+            const row = btn.closest('tr');
+            const id = row.cells[0].textContent;
+            
+            // Call API to delete
+            const resp = await fetchJSON('http://localhost/api/task_delete.php', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ task_id: id })
+            });
+            
+            if (resp && resp.ok) {
+                row.remove();
+                // Also remove from localStorage
+                const tasks = JSON.parse(localStorage.getItem('hm_tasks')||'[]').filter(t=>t.task_id!==id);
+                localStorage.setItem('hm_tasks', JSON.stringify(tasks));
+                alert('Task deleted!');
+            } else {
+                // Fallback: still remove from localStorage
+                row.remove();
+                const tasks = JSON.parse(localStorage.getItem('hm_tasks')||'[]').filter(t=>t.task_id!==id);
+                localStorage.setItem('hm_tasks', JSON.stringify(tasks));
+                alert('Task deleted (local)!');
+            }
+        }
+
+        // close modal
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

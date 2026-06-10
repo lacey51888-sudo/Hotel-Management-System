@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../global.css">
+    <link rel="stylesheet" href="../global_modal.css">
+    <link rel="stylesheet" href="room_type.css">
+    <title>Hotel Management System - Check-in</title>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                🏨 Hotel Management System
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <span class="nav-icon">🏠</span>
+                    <a href="./Order_room.html" class="nav-link">Select Room Type</a>
+                </li>
+                <li class="nav-item active">
+                    <span class="nav-icon">📝</span>
+                    <a href="./Check_in_out.html" class="nav-link">Check-in/Check-out</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <a href="./Cleaning_task.html" class="nav-link">Services</a>
+                </li>
+                <li class="nav-item" id="kpiMenuItem" style="display:none;">
+                    <span class="nav-icon">📊</span>
+                    <a href="../Manager/KPI.html" class="nav-link">Performance</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="./Front_desk_information.html" class="nav-link">My Account</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">🚪</span>
+                    <a href="../Login_Register.html" class="nav-link">Logout</a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div class="header-box" style="background-color: #2c5aa0; color: white;">
+                <h1 style="color:white;">Time Test: Insertion / Deletion / Search</h1>
+                <p class="subtitle" style="color: white;"><a href="../../performance_test.html" class="nav-link">Click here!</a></p>
+            </div>
+            <div class="header-box">
+                <div class="header-top">
+                    <h1>Room Status Management</h1>
+                    <button class="new-book-btn" onclick="location.href='./Order_room.html'">+ New Booking</button>
+                </div>
+                <div class="filter-box">
+                    <select id="floorFilter">
+                        <option value="all">All Floors</option>
+                    </select>
+                    <select id="statusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="Checked in">Occupied</option>
+                        <option value="Free">Available</option>
+                        <option value="Booked">Reserved</option>
+                    </select>
+                    <input type="text" id="searchInput" class="search-input" placeholder="Room/Guest/Phone">
+                    <button id="searchBtn" class="search-btn">Search</button>
+                </div>
+            </div>
+
+            <div class="table-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Room No.</th>
+                            <th>Room Type</th>
+                            <th>Status</th>
+                            <th>Guest Name</th>
+                            <th>Phone No.</th>
+                            <th>Check-in Date</th>
+                            <th>Check-out Date</th>
+                            <th>Check-in Time</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomTableBody"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- modal-->
+    <div id="checkoutModal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Check-out</h3>
+            <p>Are you sure?</p>
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" onclick="closeModal('checkoutModal')">Cancel</button>
+                <button class="modal-btn btn-confirm" onclick="confirmCheckout()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="extendModal" class="modal">
+        <div class="modal-content">
+            <h3>Extend Stay</h3>
+            <div id="extendInfo" style="margin: 10px 0; padding: 10px; background: #f5f5f5;"></div>
+            <div class="form-group">
+                <label>Extend to:</label>
+                <input type="date" id="extendDate">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" onclick="closeModal('extendModal')">Cancel</button>
+                <button class="modal-btn btn-confirm" onclick="confirmExtend()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="checkinModal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Check-in</h3>
+            <div id="checkinInfo" style="margin: 10px 0; padding: 10px; background: #f5f5f5;"></div>
+            <div class="form-group">
+                <label>Check-in Time:</label>
+                <input type="text" id="checkinTime" readonly>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" onclick="closeModal('checkinModal')">Cancel</button>
+                <button class="modal-btn btn-confirm" onclick="confirmCheckin()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="searchModal" class="modal">
+        <div class="modal-content">
+            <h3>Room Details</h3>
+            <div id="searchInfo" style="margin: 10px 0; padding: 10px; background: #f5f5f5;"></div>
+            <div class="modal-footer" id="searchFooter"></div>
+        </div>
+    </div>
+
+    <script>
+        // RBAC guard
+        (function(){
+            try {
+                const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+                const role = user && user.role_id;
+                if (!role || (role !== 'reception' && role !== 'manager')) {
+                    alert('No permission to access front desk pages');
+                    window.location.href = '../Login_Register.html';
+                    return;
+                }
+                // If manager, show KPI menu item
+                if (role === 'manager') {
+                    const kpiMenuItem = document.getElementById('kpiMenuItem');
+                    if (kpiMenuItem) kpiMenuItem.style.display = 'block';
+                }
+            } catch(e) {
+                window.location.href = '../Login_Register.html';
+                return;
+            }
+        })();
+        let currentRow = null;
+
+        window.onload = async function() {
+            // Filter function - check both floor and status
+            function applyFilters() {
+                const selectedFloor = document.getElementById('floorFilter').value;
+                const selectedStatus = document.getElementById('statusFilter').value;
+                const rows = document.querySelectorAll('#roomTableBody tr');
+                
+                rows.forEach(row => {
+                    const roomFloor = row.dataset.floor || '';
+                    const statusText = row.querySelector('td:nth-child(3) span')?.textContent || '';
+                    
+                    // Check floor match
+                    const floorMatch = selectedFloor === 'all' || roomFloor === selectedFloor;
+                    // Check status match
+                    const statusMatch = selectedStatus === 'all' || statusText === selectedStatus;
+                    
+                    // Only show if both conditions are met
+                    row.style.display = (floorMatch && statusMatch) ? '' : 'none';
+                });
+            }
+            
+            // floor filter
+            document.getElementById('floorFilter').onchange = applyFilters;
+
+            // status filter
+            document.getElementById('statusFilter').onchange = applyFilters;
+
+            // search button
+            document.getElementById('searchBtn').onclick = searchRoom;
+
+            async function fetchJSON(url, options){
+                try {
+                    const r = await fetch(url, options);
+                    const text = await r.text();
+                    try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+                } catch(e) {
+                    console.error('network_error', url, e);
+                    return { ok:false, error:'network_error' };
+                }
+            }
+            const roomsResp = await fetchJSON('http://localhost/api/rooms_get.php');
+            const typesResp = await fetchJSON('http://localhost/api/room_types_get.php');
+            const ordersResp = await fetchJSON('http://localhost/api/orders_get.php');
+            const usersResp = await fetchJSON('http://localhost/api/users_get.php');
+            
+            const ordersByRoom = {};
+            if (ordersResp && ordersResp.ok) {
+                ordersResp.data.forEach(o=>{
+                    // Only keep active orders (Pending and Checked In), exclude Completed and Cancelled orders
+                    if (o.order_status === 'Pending' || o.order_status === 'Checked In') {
+                        ordersByRoom[o.room_id] = o;
+                    }
+                });
+            }
+            
+            const usersMap = {};
+            if (usersResp && usersResp.ok) {
+                usersResp.data.forEach(u=>{
+                    usersMap[u.user_id] = u;
+                });
+            }
+            
+            if (roomsResp && roomsResp.ok) {
+                const tbody = document.getElementById('roomTableBody');
+                tbody.innerHTML = '';
+                const typeMap = {};
+                if (typesResp && typesResp.ok) {
+                    typesResp.data.forEach(t=>{ typeMap[t.type_id] = t.type_name; });
+                }
+                
+                // Dynamically generate floor options
+                const floors = new Set();
+                roomsResp.data.forEach(room => {
+                    if (room.floor) floors.add(room.floor.toString());
+                });
+                const floorFilter = document.getElementById('floorFilter');
+                floorFilter.innerHTML = '<option value="all">All Floors</option>';
+                Array.from(floors).sort((a, b) => parseInt(a) - parseInt(b)).forEach(floor => {
+                    floorFilter.innerHTML += `<option value="${floor}">${floor}F</option>`;
+                });
+                
+                roomsResp.data.forEach(room=>{
+                    const tr = document.createElement('tr');
+                    tr.dataset.roomNumber = room.room_id;
+                    tr.dataset.floor = room.floor || '';
+                    const backendStat = room.room_status; // available/unavailable
+                    const order = ordersByRoom[room.room_id]; // Active order (Pending or Checked In)
+                    
+                    let uiStat = 'Free';
+                    if (backendStat === 'available') {
+                        uiStat = 'Free';
+                    } else if (order) {
+                        // Room unavailable and has active order
+                        uiStat = (order.order_status === 'Pending') ? 'Booked' : 'Checked in';
+                    } else {
+                        // Room unavailable but no active order (possibly maintenance or cleaning status)
+                        uiStat = 'Free';
+                    }
+                    
+                    const statusBadge = `<span class="status-badge ${uiStat==='Free'?'status-checkout':uiStat==='Booked'?'status-booked':'status-checkin'}">${uiStat}</span>`;
+                    const actions = uiStat==='Free' ? '<a href="./Order_room.html" class="action-btn btn-primary">Process</a>' : (uiStat==='Booked' ? '<button class="action-btn btn-success" onclick="doCheckin(this)">Check-in</button>' : '<button class="action-btn btn-danger" onclick="doCheckout(this)">Check-out</button> <button class="action-btn btn-primary" onclick="doExtend(this)">Extend</button>');
+                    
+                    // Get user phone
+                    const userPhone = order && usersMap[order.user_id] ? usersMap[order.user_id].user_phone : '-';
+                    
+                    tr.innerHTML = `
+                        <td><strong>${room.room_id}</strong></td>
+                        <td>${typeMap[room.type_id] || room.type_id || ''}</td>
+                        <td>${statusBadge}</td>
+                        <td>${order?.user_id || '-'}</td>
+                        <td>${userPhone}</td>
+                        <td>${order?.check_in || '-'}</td>
+                        <td>${order?.check_out || '-'}</td>
+                        <td>-</td>
+                        <td>${actions}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            console.log('Load successfully!');
+        };
+
+        // search
+        function searchRoom() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) {
+                alert('Please input the content!');
+                return;
+            }
+
+            let found = null;
+            const rows = document.querySelectorAll('#roomTableBody tr');
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].textContent.includes(keyword)) {
+                    found = rows[i];
+                    break; // find the first to stop
+                }
+            }
+
+            if (!found) {
+                alert('Sorry!Fail to find!');
+                return;
+            }
+
+            // detail
+            const room = {
+                number: found.cells[0].textContent,
+                type: found.cells[1].textContent,
+                status: found.cells[2].textContent,
+                guest: found.cells[3].textContent,
+                phone: found.cells[4].textContent,
+                checkin: found.cells[5].textContent,
+                checkout: found.cells[6].textContent,
+                time: found.cells[7].textContent
+            };
+
+            document.getElementById('searchInfo').innerHTML = `
+                <strong>Room:</strong> ${room.number}<br>
+                <strong>Type:</strong> ${room.type}<br>
+                <strong>Status:</strong> ${room.status}<br>
+                <strong>Guest:</strong> ${room.guest}<br>
+                <strong>Phone:</strong> ${room.phone}<br>
+                <strong>Check-in:</strong> ${room.checkin}<br>
+                <strong>Check-out:</strong> ${room.checkout}
+            `;
+
+            // button movement
+            const footer = document.getElementById('searchFooter');
+            footer.innerHTML = '';
+            if (room.status.includes('Occupied') && !found.classList.contains('disabled')) {
+                footer.innerHTML += '<button class="modal-btn btn-confirm" onclick="doCheckoutFromSearch()">Check-out</button>';
+                footer.innerHTML += '<button class="modal-btn btn-confirm" onclick="doExtendFromSearch()">Extend</button>';
+            }
+            if (room.status.includes('Reserved') && !found.classList.contains('disabled')) {
+                footer.innerHTML += '<button class="modal-btn btn-confirm" onclick="doCheckinFromSearch()">Check-in</button>';
+            }
+            footer.innerHTML += '<button class="modal-btn btn-cancel" onclick="closeModal(\'searchModal\')">Close</button>';
+
+            showModal('searchModal');
+        }
+
+        // check-out
+        function doCheckout(btn) {
+            currentRow = btn.parentElement.parentElement;
+            showModal('checkoutModal');
+        }
+        
+        async function confirmCheckout() {
+            if (!currentRow) return;
+            
+            const roomNumber = currentRow.dataset.roomNumber;
+            currentRow.classList.add('disabled');
+            currentRow.querySelector('td:nth-child(3)').innerHTML = '<span class="status-badge status-checkout">Available</span>';
+            // clean
+            for (let i = 3; i <= 7; i++) {
+                currentRow.cells[i].textContent = '-';
+            }
+            currentRow.cells[8].innerHTML = '<a href="./Order_room.html" class="action-btn btn-primary">Process</a>';
+            
+            await fetch('http://localhost/api/order_checkout.php', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({room_id: roomNumber})
+            }).catch(()=>{});
+            
+            alert('Check out successfully!');
+            closeModal('checkoutModal');
+        }
+
+        // check-in
+        function doCheckin(btn) {
+            currentRow = btn.parentElement.parentElement;
+            const guest = currentRow.cells[3].textContent;
+            if (guest === '-') {
+                alert('Please input the information of customer!');
+                return;
+            }
+            
+            document.getElementById('checkinInfo').innerHTML = `
+                <strong>Room:</strong> ${currentRow.cells[0].textContent}<br>
+                <strong>Guest:</strong> ${guest}
+            `;
+            
+            const now = new Date().toLocaleString('en-US');
+            document.getElementById('checkinTime').value = now;
+            showModal('checkinModal');
+        }
+        
+        async function confirmCheckin() {
+            if (!currentRow) return;
+            
+            const time = document.getElementById('checkinTime').value;
+            const roomNumber = currentRow.dataset.roomNumber;
+            
+            currentRow.classList.remove('disabled');
+            currentRow.querySelector('td:nth-child(3)').innerHTML = '<span class="status-badge status-checkin">Occupied</span>';
+            currentRow.cells[7].textContent = time;
+            currentRow.cells[8].innerHTML = `
+                <button class="action-btn btn-danger" onclick="doCheckout(this)">Check-out</button>
+                <button class="action-btn btn-primary" onclick="doExtend(this)">Extend</button>
+            `;
+            
+            await fetch('http://localhost/api/order_checkin.php', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({room_id: roomNumber})
+            }).catch(()=>{});
+            
+            alert('Check in successfully!');
+            closeModal('checkinModal');
+        }
+
+        // stay extension
+        function doExtend(btn) {
+            currentRow = btn.parentElement.parentElement;
+            document.getElementById('extendInfo').innerHTML = `
+                <strong>Room:</strong> ${currentRow.cells[0].textContent}<br>
+                <strong>Guest:</strong> ${currentRow.cells[3].textContent}
+            `;
+            
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('extendDate').min = tomorrow.toISOString().split('T')[0];
+            document.getElementById('extendDate').value = currentRow.cells[6].textContent || tomorrow.toISOString().split('T')[0];
+            
+            showModal('extendModal');
+        }
+        
+        async function confirmExtend() {
+            if (!currentRow) return;
+            
+            const newDate = document.getElementById('extendDate').value;
+            if (!newDate) {
+                alert('choose a date!');
+                return;
+            }
+            
+            currentRow.cells[6].textContent = newDate;
+            const roomNumber = currentRow.dataset.roomNumber;
+            await fetch('http://localhost/api/order_extend.php', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ room_id: roomNumber, check_out: newDate })
+            }).catch(()=>{});
+            alert('Successful extension of stay!');
+            closeModal('extendModal');
+        }
+
+        //search
+        function doCheckoutFromSearch() {
+            closeModal('searchModal');
+            doCheckout(document.querySelector('.action-btn.btn-danger'));
+        }
+        function doExtendFromSearch() {
+            closeModal('searchModal');
+            doExtend(document.querySelector('.action-btn.btn-primary'));
+        }
+        function doCheckinFromSearch() {
+            closeModal('searchModal');
+            doCheckin(document.querySelector('.action-btn.btn-success'));
+        }
+
+
+        function showModal(id) {
+            document.getElementById(id).style.display = 'block';
+        }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            currentRow = null;
+        }
+
+        // close
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+                currentRow = null;
+            }
+        };
+    </script>
+</body>
+</html>

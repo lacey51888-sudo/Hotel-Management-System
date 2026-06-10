@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../global.css">
+    <link rel="stylesheet" href="../global_modal.css">
+    <link rel="stylesheet" href="../user_information.css">
+    <title>Personal Account - Hotel Management System</title>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                🏨 Hotel Management System
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <span class="nav-icon">🏠</span>
+                    <a href="../Front_desk/Order_room.html" class="nav-link">Room Selection</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <a href="../Front_desk/Check_in_out.html" class="nav-link">Check-in/Check-out</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <a href="../Front_desk/Cleaning_task.html" class="nav-link">Services</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <a href="./KPI.html" class="nav-link">Personal Performance</a>
+                </li>
+                <li class="nav-item active">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="./Manager_information.html" class="nav-link">Personal Account</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="../Login_Register.html" class="nav-link">Logout</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="header-box" style="background-color: #2c5aa0; color: white;">
+                <h1 style="color:white;">Time Test: Insertion / Deletion / Search</h1>
+                <p class="subtitle" style="color: white;"><a href="../../performance_test.html" class="nav-link">Click here!</a></p>
+            </div>
+            <div class="content-header">
+                <h1>Personal Account</h1>
+            </div>
+
+            <div class="profile-container">
+                <!-- User Basic Information Card -->
+                <div class="user-card">
+                    <div class="avatar-section">
+                        <div class="avatar-wrapper">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=cleaner" alt="User Avatar" class="avatar" id="userAvatar">
+                            <div class="avatar-badge"></div>
+                        </div>
+                        <div class="user-basic-info">
+                            <div class="user-name" id="userName">Loading...</div>
+                            <div class="user-role">Loading...</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI Status -->
+                    <div class="kpi-section">
+                        <div>
+                            <div class="kpi-title">Monthly Performance Rate</div>
+                            <div class="kpi-score" id="kpiScore">Loading...</div>
+                        </div>
+                        <div class="kpi-badge kpi-pass" id="kpiStatus">
+                            Loading...
+                        </div>
+                    </div>
+
+                    <!-- Information Grid -->
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-card-title">Phone Number</div>
+                            <div class="info-card-value" id="userPhone">Loading...</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">Email</div>
+                            <div class="info-card-value" id="userEmail">Loading...</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">Employee ID</div>
+                            <div class="info-card-value" id="userId">Loading...</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-card-title">Hire Date</div>
+                            <div class="info-card-value" id="createdAt">Loading...</div>
+                        </div>
+                        <div class="info-card full-width">
+                            <div class="info-card-title">Account Status</div>
+                            <div class="info-card-value" style="color: #4caf50;">✓ Active</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <button class="action-btn btn-modify" onclick="showPasswordModal()">
+                            🔐 Change Password
+                        </button>
+                        <button class="action-btn btn-logout" onclick="logout()">
+                            🚪 Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 25px; color: #333;">🔐 Change Login Password</h3>
+            
+            <div class="form-group">
+                <label>📱 Verify Phone Number</label>
+                <input type="tel" id="verifyPhone" placeholder="Enter current phone number">
+                <div class="form-hint">Must match the phone number bound to your account</div>
+            </div>
+
+            <div class="form-group">
+                <label>🔑 New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password">
+                <div class="form-hint">6-20 characters, letters and numbers recommended</div>
+            </div>
+
+            <div class="form-group">
+                <label>✅ Confirm Password</label>
+                <input type="password" id="confirmPassword" placeholder="Re-enter new password">
+                <div class="error-message" id="errorMsg" style="display: none;">⚠️ Passwords do not match!</div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-confirm" onclick="changePassword()">Confirm Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // RBAC guard: only manager
+        (function(){
+            try {
+                const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+                const role = user && user.role_id;
+                if (role !== 'manager') {
+                    alert('No permission to access manager pages');
+                    window.location.href = '../Login_Register.html';
+                    return;
+                }
+            } catch(e) {
+                window.location.href = '../Login_Register.html';
+                return;
+            }
+        })();
+        
+        async function fetchJSON(url, options){
+            try {
+                const r = await fetch(url, options);
+                const text = await r.text();
+                try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+            } catch(e) {
+                console.error('network_error', url, e);
+                return { ok:false, error:'network_error' };
+            }
+        }
+        
+        async function loadUserProfile() {
+            const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+            if (!user.user_id) {
+                alert('User not logged in');
+                window.location.href = '../Login_Register.html';
+                return;
+            }
+            
+            // Fetch user info from API
+            const resp = await fetchJSON('http://localhost/api/user_profile_get.php?user_id=' + user.user_id);
+            if (resp && resp.ok && resp.user) {
+                const profile = resp.user;
+                
+                // Update avatar
+                const avatar = document.getElementById('userAvatar');
+                if (avatar) avatar.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.user_id || 'user'}`;
+                
+                // Update username
+                const userName = document.getElementById('userName');
+                if (userName) userName.textContent = profile.user_name || 'N/A';
+                
+                // Update role
+                const userRole = document.querySelector('.user-role');
+                const roleMap = {
+                    'customer': 'Customer',
+                    'staff': 'Front Desk · Reception',
+                    'cleaner': 'Housekeeping · Cleaner',
+                    'manager': 'Management · Manager'
+                };
+                if (userRole) userRole.textContent = roleMap[profile.user_type] || profile.user_type || 'Staff';
+                
+                // Update phone
+                const userPhone = document.getElementById('userPhone');
+                if (userPhone) userPhone.textContent = profile.user_phone || 'N/A';
+                
+                // Update email
+                const userEmail = document.getElementById('userEmail');
+                if (userEmail) userEmail.textContent = profile.user_email || 'N/A';
+                
+                // Update user ID
+                const userId = document.getElementById('userId');
+                if (userId) userId.textContent = profile.user_id || 'N/A';
+                
+                // Update created time (Hire Date)
+                const createdAt = document.getElementById('createdAt');
+                if (createdAt && profile.created_at) {
+                    const date = new Date(profile.created_at);
+                    createdAt.textContent = date.toISOString().split('T')[0];
+                } else if (createdAt) {
+                    createdAt.textContent = 'N/A';
+                }
+                
+            } else {
+                // Use localStorage data as fallback
+                const userName = document.getElementById('userName');
+                if (userName) userName.textContent = user.user_name || 'N/A';
+                
+                const userPhone = document.getElementById('userPhone');
+                if (userPhone) userPhone.textContent = user.user_phone || user.phone || 'N/A';
+                
+                const userEmail = document.getElementById('userEmail');
+                if (userEmail) userEmail.textContent = user.user_email || user.email || 'N/A';
+                
+                const userRole = document.querySelector('.user-role');
+                const roleMap = {
+                    'customer': 'Customer',
+                    'reception': 'Front Desk · Reception',
+                    'staff': 'Front Desk · Reception',
+                    'cleaner': 'Housekeeping · Cleaner',
+                    'manager': 'Management · Manager'
+                };
+                if (userRole) userRole.textContent = roleMap[user.role_id] || user.role_id || 'Staff';
+            }
+        }
+        
+        async function renderRevenue() {
+            const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+            
+            // Fetch order data from API
+            const ordersResp = await fetchJSON('http://localhost/api/orders_get.php');
+            let orders = [];
+            if (ordersResp && ordersResp.ok) {
+                orders = ordersResp.data.filter(o => o.staff_id === user.user_id);
+            } else {
+                // fallback to localStorage
+                orders = JSON.parse(localStorage.getItem('hm_orders')||'[]').filter(o=>o.staff_id===user.user_id);
+            }
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todays = orders.filter(o=>String(o.check_in).startsWith(today));
+            const sum = todays.reduce((acc,o)=>acc + (parseFloat(o.total_amount)||parseFloat(o.amount)||0), 0);
+            const kpiScoreEl = document.getElementById('kpiScore');
+            const kpiStatusEl = document.getElementById('kpiStatus');
+            kpiScoreEl.textContent = '¥'+sum.toFixed(2);
+            kpiStatusEl.textContent = sum>0 ? '✓ Active' : '–';
+        }
+        
+        function showPasswordModal() {
+            document.getElementById('passwordModal').style.display = 'block';
+            // clean input
+            const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+            document.getElementById('verifyPhone').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+        
+        function closeModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+        
+        async function changePassword() {
+            const phone = document.getElementById('verifyPhone').value.trim();
+            const pwd = document.getElementById('newPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            
+            const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+            const userPhone = user.user_phone || user.phone;
+            
+            if (phone !== userPhone) {
+                alert("Phone number doesn't match!");
+                return;
+            }
+            
+            if (pwd.length < 6 || pwd.length > 20) {
+                alert("Password length must be 6-20 characters!");
+                return;
+            }
+            
+            if (pwd !== confirm) {
+                document.getElementById('errorMsg').style.display = 'block';
+                return;
+            }
+            
+            // Call API to change password
+            const resp = await fetchJSON('http://localhost/api/user_profile_update.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_id: user.user_id,
+                    user_phone: phone,
+                    new_password: pwd
+                })
+            });
+            
+            if (resp && resp.ok) {
+                alert("Password changed successfully!");
+                closeModal();
+            } else {
+                alert("Failed to change password: " + (resp?.error || 'Unknown error'));
+            }
+        }
+        
+        function logout() {
+            if (confirm("Are you sure to logout?")) {
+                localStorage.removeItem('hm_user');
+                localStorage.setItem('loggedIn', 'false');
+                alert("Logging out...");
+                window.location.href = '../Login_Register.html';
+            }
+        }
+        
+        window.onload = async function(){
+            await loadUserProfile();
+            await renderRevenue();
+        }
+        
+        // close the modal
+        window.onclick = function(event) {
+            const modal = document.getElementById('passwordModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

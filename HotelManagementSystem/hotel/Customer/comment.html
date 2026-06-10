@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comment</title>
+    <link rel="stylesheet" href="../global.css">
+
+    <style>
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+      
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        .content-header {
+            background: var(--bg-card);
+            padding: var(--spacing-lg);
+            border-radius: 10px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+ 
+        .comment-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: var(--shadow-md);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: var(--spacing-md);
+            border-radius: 8px;
+            border: 1px solid #bbb;
+            margin-top: var(--spacing-md);
+            resize: none;
+        }
+
+        .star-row {
+            margin: 15px 0;
+        }
+
+        .star {
+            font-size: 28px;
+            cursor: pointer;
+            color: #ccc;
+            transition: 0.2s;
+        }
+
+        .star.active {
+            color: gold;
+        }
+
+        .send-btn {
+            background: var(--primary);
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .send-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .view-comments-btn {
+            background: #6c757d;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        .view-comments-btn:hover {
+            opacity: 0.85;
+        }
+
+        .comments-list {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .comments-list.show {
+            display: block;
+        }
+
+        .comment-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .comment-stars {
+            color: gold;
+        }
+
+        .comment-text {
+            color: #333;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+<div class="app-container">
+
+    <!-- left server -->
+    <nav class="sidebar">
+        <div class="sidebar-header">🏨 Hotel Management System</div>
+
+        <ul class="nav-menu">
+
+            <li class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <a href="home.html" class="nav-link">Home</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">💼</span>
+                <a href="booking.html" class="nav-link">Booking</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="comment.html" class="nav-link">Comment</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="order.html" class="nav-link">Order</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🛎️</span>
+                <a href="service.html" class="nav-link">Service</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🔑</span>
+                <a href="../Staff/Login_Register.html" class="nav-link" id="login-link">Login</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">👤</span>
+                <a href="personal.html" class="nav-link" id="personal-link">Personal Center</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🚪</span>
+                <a href="#" class="nav-link" id="logout-link">Logout</a>
+            </li>
+
+        </ul>
+    </nav>
+
+
+    <main class="main-content">
+        <div class="content-header">
+            <h1>Room Type Comment</h1>
+            <p style="color:var(--text-secondary); margin-top:8px;">Give feedback to room types you have stayed</p>
+        </div>
+
+        <div id="roomTypesContainer"></div>
+
+    </main>
+</div>
+
+
+<script>
+function setRating(starEl, rating) {
+    let stars = starEl.parentElement.querySelectorAll(".star");
+
+    stars.forEach((s, index) => {
+        if (index < rating) s.classList.add("active");
+        else s.classList.remove("active");
+    });
+
+    starEl.parentElement.setAttribute("data-rating", rating);
+}
+
+
+async function fetchJSON(url, options){
+    try {
+        const r = await fetch(url, options);
+        const text = await r.text();
+        try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+    } catch(e) {
+        console.error('network_error', url, e);
+        return { ok:false, error:'network_error' };
+    }
+}
+async function renderRoomTypes(){
+    const container = document.getElementById('roomTypesContainer');
+    container.innerHTML = '<p>Loading...</p>';
+    
+    // Get current user
+    const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+    if (!user || !user.user_id) { 
+        container.innerHTML = '<p>Please login first</p>';
+        return; 
+    }
+    
+    // Get user's orders
+    const ordersResp = await fetchJSON('http://localhost/api/orders_get.php?user_id=' + user.user_id);
+    if (!ordersResp || !ordersResp.ok || !ordersResp.data || ordersResp.data.length === 0) {
+        container.innerHTML = '<p>No orders found. You can only comment on room types you have booked.</p>';
+        return;
+    }
+    
+    // Get all room types
+    const typesResp = await fetchJSON('http://localhost/api/room_types_get.php');
+    const typeMap = {};
+    if (typesResp && typesResp.ok) {
+        typesResp.data.forEach(t => { typeMap[t.type_id] = t.type_name; });
+    }
+    
+    // Get user's booked room types (deduplicated)
+    const bookedTypeIds = [...new Set(ordersResp.data.map(o => o.type_id))];
+    
+    if (bookedTypeIds.length === 0) {
+        container.innerHTML = '<p>No room types found in your orders.</p>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    bookedTypeIds.forEach(typeId=>{
+        const card = document.createElement('div');
+        card.className = 'comment-card';
+        card.dataset.typeId = typeId;
+        card.innerHTML = `
+            <h2>${typeMap[typeId] || typeId}</h2>
+            <button class="view-comments-btn" onclick="toggleComments(this, '${typeId}')">View Existing Comments</button>
+            <div class="comments-list" id="comments-${typeId}"></div>
+            <textarea placeholder="Enter your comment..."></textarea>
+            <div class="star-row">
+                <span class="star" onclick="setRating(this,1)">★</span>
+                <span class="star" onclick="setRating(this,2)">★</span>
+                <span class="star" onclick="setRating(this,3)">★</span>
+                <span class="star" onclick="setRating(this,4)">★</span>
+                <span class="star" onclick="setRating(this,5)">★</span>
+            </div>
+            <button class="send-btn" onclick="sendComment(this)">Send</button>`;
+        container.appendChild(card);
+    });
+}
+renderRoomTypes();
+
+async function toggleComments(btn, typeId) {
+    const commentsList = document.getElementById('comments-' + typeId);
+    
+    // If already showing, hide it
+    if (commentsList.classList.contains('show')) {
+        commentsList.classList.remove('show');
+        btn.textContent = 'View Existing Comments';
+        return;
+    }
+    
+    // Otherwise load and display comments
+    commentsList.innerHTML = '<p>Loading comments...</p>';
+    commentsList.classList.add('show');
+    btn.textContent = 'Hide Comments';
+    
+    try {
+        const resp = await fetchJSON(`http://localhost/api/comments_get.php?type_id=${typeId}`);
+        
+        if (!resp || !resp.ok) {
+            commentsList.innerHTML = '<p>Failed to load comments</p>';
+            return;
+        }
+        
+        if (!resp.data || resp.data.length === 0) {
+            commentsList.innerHTML = '<p>No comments yet for this room type.</p>';
+            return;
+        }
+        
+        // Display comments list
+        commentsList.innerHTML = '';
+        resp.data.forEach(comment => {
+            const stars = '★'.repeat(comment.score) + '☆'.repeat(5 - comment.score);
+            const commentDiv = document.createElement('div');
+            commentDiv.className = 'comment-item';
+            commentDiv.innerHTML = `
+                <div class="comment-header">
+                    <span><strong>${comment.user_name || 'Anonymous'}</strong></span>
+                    <span class="comment-stars">${stars}</span>
+                </div>
+                <div class="comment-text">${comment.text || 'No comment text'}</div>
+                <div style="font-size:12px;color:#999;margin-top:5px;">${comment.comment_time}</div>
+            `;
+            commentsList.appendChild(commentDiv);
+        });
+    } catch (e) {
+        console.error('Error loading comments:', e);
+        commentsList.innerHTML = '<p>Error loading comments</p>';
+    }
+}
+
+async function sendComment(btn) {
+    let card = btn.closest(".comment-card");
+    let text = card.querySelector("textarea").value.trim();
+    let rating = card.querySelector(".star-row").getAttribute("data-rating");
+
+    if (!text || !rating) {
+        alert("Please complete the comment.");
+        return;
+    }
+
+    const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+    if (!user || !user.user_id) { 
+        alert('Please login first'); 
+        window.location.href = '../Staff/Login_Register.html';
+        return; 
+    }
+    const typeId = card.dataset.typeId;
+    try {
+        const resp = await fetch('http://localhost/api/comment_create.php', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+                user_id: user.user_id, type_id: typeId, score: parseInt(rating,10), text
+            })
+        });
+        const data = await resp.json();
+        if (data && data.ok) {
+            alert('Submit successful!');
+            // Clear form
+            card.querySelector("textarea").value = "";
+            card.querySelectorAll(".star").forEach(s => s.classList.remove("active"));
+            card.querySelector(".star-row").removeAttribute("data-rating");
+            
+            // If comments list is open, refresh it
+            const commentsList = document.getElementById('comments-' + typeId);
+            if (commentsList && commentsList.classList.contains('show')) {
+                const viewBtn = card.querySelector('.view-comments-btn');
+                commentsList.classList.remove('show');
+                viewBtn.textContent = 'View Existing Comments';
+                // Reopen to refresh
+                toggleComments(viewBtn, typeId);
+            }
+        } else {
+            alert('Submit failed');
+        }
+    } catch(e) {
+        alert('Server unavailable');
+    }
+}
+
+
+function updateNav() {
+    const isLoggedIn = localStorage.getItem("loggedIn") === "true";
+    const loginLink = document.getElementById("login-link");
+    const personalLink = document.getElementById("personal-link");
+    if (loginLink) loginLink.style.display = isLoggedIn ? "none" : "block";
+    if (personalLink) personalLink.style.display = isLoggedIn ? "block" : "none";
+}
+
+updateNav();
+
+
+document.getElementById("logout-link").addEventListener("click", function (e) {
+    e.preventDefault();
+    localStorage.setItem("loggedIn", "false");
+    updateNav();
+    alert("Logout successful!");
+    window.location.href = '../Staff/Login_Register.html';
+    updateNav();
+});
+document.querySelectorAll('.nav-item').forEach(item => {
+    const link = item.querySelector('a');
+    if (link && link.href === window.location.href) {
+        item.classList.add('active');
+    } else {
+        item.classList.remove('active');
+    }
+});
+</script>
+
+</body>
+</html>
+

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Management</title>
+    <link rel="stylesheet" href="../global.css">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: var(--font-main);
+            background: var(--bg-main);
+        }
+
+        
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+       
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        .content-header {
+            background: var(--bg-card);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .content-header h1 {
+            margin: 0 0 8px 0;
+        }
+
+      
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #e6e6e6;
+            font-size: 15px;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.85;
+            transform: translateY(-1px);
+        }
+
+      
+        .time-select-box {
+            display: none;
+            background: #fafafa;
+            margin-top: 10px;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .time-select-box input {
+            width: 160px;
+            padding: 6px;
+            border-radius: var(--radius-sm);
+            border: 1px solid #ccc;
+        }
+
+    </style>
+</head>
+
+<body>
+<div class="app-container">
+
+
+    <nav class="sidebar">
+        <div class="sidebar-header">🏨 Hotel Management System</div>
+
+        <ul class="nav-menu">
+
+            <li class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <a href="home.html" class="nav-link">Home</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">💼</span>
+                <a href="booking.html" class="nav-link">Booking</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="comment.html" class="nav-link">Comment</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="order.html" class="nav-link">Order</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🛎️</span>
+                <a href="service.html" class="nav-link">Service</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🔑</span>
+                <a href="../Staff/Login_Register.html" class="nav-link" id="login-link">Login</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">👤</span>
+                <a href="personal.html" class="nav-link" id="personal-link">Personal Center</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🚪</span>
+                <a href="../Staff/Login_Register.html" class="nav-link" id="logout-link">Logout</a>
+            </li>
+
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <div class="content-header">
+            <h1>Service Management</h1>
+            <p style="color:var(--text-secondary); margin-top:4px;">Manage room cleaning schedule</p>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>Room Number</th>
+                <th>Status</th>
+                <th>Cleaning Time</th>
+                <th>Submit</th>
+            </tr>
+            </thead>
+            <tbody id="serviceBody"></tbody>
+        </table>
+
+    </main>
+</div>
+
+<script>
+
+ 
+    function toggleTimeSelect(button){
+        const box = button.nextElementSibling;
+        if(box) box.style.display = box.style.display === "block" ? "none" : "block";
+    }
+
+    async function fetchJSON(url, options){
+        try {
+            const r = await fetch(url, options);
+            const text = await r.text();
+            try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+        } catch(e) {
+            console.error('network_error', url, e);
+            return { ok:false, error:'network_error' };
+        }
+    }
+
+    async function renderServiceList(){
+        const tbody = document.getElementById('serviceBody');
+        tbody.innerHTML = '';
+        
+        // Get current logged-in user
+        const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+        if (!user.user_id) {
+            tbody.innerHTML = '<tr><td colspan="4">Please login first</td></tr>';
+            return;
+        }
+        
+        // Get user's orders (only show checked-in ones)
+        const ordersResp = await fetchJSON('http://localhost/api/orders_get.php?user_id=' + user.user_id);
+        if (!ordersResp || !ordersResp.ok || !ordersResp.data || ordersResp.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No checked-in rooms</td></tr>';
+            return;
+        }
+        
+        // Filter checked-in orders
+        const checkedInOrders = ordersResp.data.filter(o => o.order_status === 'Checked In');
+        if (checkedInOrders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4">No checked-in rooms</td></tr>';
+            return;
+        }
+        
+        // Get room type information
+        const typesResp = await fetchJSON('http://localhost/api/room_types_get.php');
+        const typeMap = {};
+        if (typesResp && typesResp.ok) {
+            typesResp.data.forEach(t => { typeMap[t.type_id] = t.type_name; });
+        }
+        
+        // Save order data to global variable for submitService date validation
+        window.checkedInOrdersMap = {};
+        
+        // Display checked-in rooms
+        checkedInOrders.forEach(order => {
+            // Save order's check-in and check-out dates
+            window.checkedInOrdersMap[order.room_id] = {
+                check_in: order.check_in,
+                check_out: order.check_out
+            };
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${order.room_id}</td>
+                <td>Checked-in (${typeMap[order.type_id] || order.type_id})</td>
+                <td>
+                    <button class="btn-primary" onclick="toggleTimeSelect(this)">Select Time</button>
+                    <div class="time-select-box">
+                        <label>Date:</label><br><input type="date"><br><br>
+                        <label>Time:</label><br><input type="time"><br><br>
+                        <label>Notes (optional):</label><br><textarea style="width: 100%; min-height: 60px; padding: 6px; border-radius: 4px; border: 1px solid #ccc; resize: vertical;" placeholder="e.g., Please clean after 3 PM, extra towels needed, etc."></textarea>
+                    </div>
+                </td>
+                <td><button class="btn-primary" onclick="submitService(this)">Submit</button></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    renderServiceList();
+
+    async function submitService(button){
+        const row = button.closest("tr");
+        const box = row.querySelector(".time-select-box");
+        const date = box.querySelector("input[type='date']").value;
+        const time = box.querySelector("input[type='time']").value;
+        const notes = box.querySelector("textarea").value.trim();
+        if(!date || !time){
+            alert("Please select both date and time.");
+            return;
+        }
+        const selected = new Date(date + " " + time);
+        if(selected <= new Date()){
+            alert("Invalid time! Please choose a future time.");
+            return;
+        }
+        
+        // Verify cleaning time must be within order's check-in and check-out dates
+        const roomId = row.cells[0].textContent;
+        const orderInfo = window.checkedInOrdersMap && window.checkedInOrdersMap[roomId];
+        if (orderInfo) {
+            const checkIn = new Date(orderInfo.check_in);
+            const checkOut = new Date(orderInfo.check_out);
+            const selectedDate = new Date(date);
+            
+            // Compare date parts only
+            checkIn.setHours(0, 0, 0, 0);
+            checkOut.setHours(0, 0, 0, 0);
+            selectedDate.setHours(0, 0, 0, 0);
+            
+            if (selectedDate < checkIn || selectedDate > checkOut) {
+                alert(`Cleaning time must be within your stay period!\nCheck-in: ${orderInfo.check_in}\nCheck-out: ${orderInfo.check_out}`);
+                return;
+            }
+        }
+        const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+        try {
+            const resp = await fetch('http://localhost/api/task_create.php', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ room_id: row.cells[0].textContent, customer_id: user.user_id||'guest', wish_time: date+' '+time, notes: notes || '' })
+            });
+            const data = await resp.json();
+            if (data && data.ok) alert('Submit successful!'); else alert('Submit failed');
+        } catch(e) {
+            // fallback local
+            const reqs = JSON.parse(localStorage.getItem('hm_cleaning_requests')||'[]');
+            const taskId = 'REQ'+Date.now();
+            reqs.push({task_id: taskId, room_id: row.cells[0].textContent, user_id: user.user_id||'guest', task_status:'pending', wish_time: date+' '+time, notes: notes || '', created_at: Date.now()});
+            localStorage.setItem('hm_cleaning_requests', JSON.stringify(reqs));
+            alert('Submit successful (local)');
+        }
+    }
+  
+    if (localStorage.getItem("loggedIn") === null) {
+        localStorage.setItem("loggedIn", "true");
+    }
+
+   
+    function updateNav() {
+        const loggedIn = localStorage.getItem("loggedIn") === "true";
+        const loginLink = document.getElementById("login-link");
+
+        if (loginLink) loginLink.style.display = loggedIn ? "none" : "block";
+    }
+
+    
+    updateNav();
+
+ 
+    const logoutLink = document.getElementById("logout-link");
+    if (logoutLink) {
+        logoutLink.addEventListener("click", function(e) {
+            e.preventDefault(); 
+            localStorage.setItem("loggedIn", "false");
+            alert("Logout successful!");
+            updateNav();
+            window.location.href = '../Staff/Login_Register.html';
+        });
+    }
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+        const link = item.querySelector('a');
+        if (link && link.href === window.location.href) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+</script>
+</body>
+</html>

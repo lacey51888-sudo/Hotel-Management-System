@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../../global.css">
+    <link rel="stylesheet" href="../global_modal.css">
+    <link rel="stylesheet" href="order_room.css">
+    <title>Employee System - Room Reservation</title>
+</head>
+
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">🏨 Hotel Management System</div>
+            <ul class="nav-menu">
+                <li class="nav-item active">
+                    <span class="nav-icon">🏠</span>
+                    <a href="./Order_room.html" class="nav-link">Select Room Type</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <a href="./Check_in_out.html" class="nav-link">Check-in/Check-out</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <a href="./Cleaning_task.html" class="nav-link">Services</a>
+                </li>
+                <li class="nav-item" id="kpiMenuItem" style="display:none;">
+                    <span class="nav-icon">📊</span>
+                    <a href="../Manager/KPI.html" class="nav-link">Performance</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="./Front_desk_information.html" class="nav-link">Personal Account</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="../Login_Register.html" class="nav-link">Logout</a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div class="header-box" style="background-color: #2c5aa0; color: white;">
+                <h1 style="color:white;">Time Test: Insertion / Deletion / Search</h1>
+                <p class="subtitle" style="color: white;"><a href="../../performance_test.html" class="nav-link">Click here!</a></p>
+            </div>
+            <div class="header-box">
+                <h1>Room Reservation</h1>
+            </div>
+
+            <div class="room-box" id="roomBox">
+                <!-- Room cards will be loaded dynamically -->
+                <p>Loading room types...</p>
+            </div>
+        </main>
+    </div>
+
+    <div id="bookModal" class="modal">
+        <div class="modal-content">
+            <h3>Booking Registration</h3>
+            <div class="info-box" id="roomInfo"></div>
+            
+            <div class="form-group">
+                <label>Guest Name *</label>
+                <input type="text" id="guestName" placeholder="Enter guest name">
+            </div>
+            
+            <div class="form-group">
+                <label>Phone Number *</label>
+                <input type="tel" id="phoneNumber" placeholder="Enter phone">
+            </div>
+            
+            <div class="form-group">
+                <label>Number of Companions</label>
+                <select id="companionCount">
+                    <option value="1">1 person</option>
+                    <option value="2">2 people</option>
+                    <option value="3">3 people</option>
+                    <option value="4">4 people</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Check-in Date *</label>
+                <input type="date" id="checkinDate">
+            </div>
+            
+            <div class="form-group">
+                <label>Check-in Time *</label>
+                <input type="time" id="checkinTime" value="14:00">
+            </div>
+            
+            <div class="form-group">
+                <label>Check-out Date *</label>
+                <input type="date" id="checkoutDate">
+            </div>
+            
+            <div class="form-group">
+                <label>Check-out Time *</label>
+                <input type="time" id="checkoutTime" value="12:00">
+            </div>
+            
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn btn-confirm" onclick="confirmBooking()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // RBAC guard
+        (function(){
+            try {
+                const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+                const role = user && user.role_id;
+                if (!role || (role !== 'reception' && role !== 'manager')) {
+                    alert('No permission to access front desk pages');
+                    window.location.href = '../Login_Register.html';
+                    return;
+                }
+                // If manager, show KPI menu item
+                if (role === 'manager') {
+                    const kpiMenuItem = document.getElementById('kpiMenuItem');
+                    if (kpiMenuItem) kpiMenuItem.style.display = 'block';
+                }
+            } catch(e) {
+                window.location.href = '../Login_Register.html';
+                return;
+            }
+        })();
+        // Shared inventory via localStorage
+        const INVENTORY_KEY = 'hm_inventory';
+        const ORDERS_KEY = 'hm_orders';
+        const ROOMS_KEY = 'hm_rooms';
+        let inventory = {};
+        let currentRoomType = null;
+        let currentRoomIndex = null;
+        let roomTypesData = []; // Store room types with prices
+
+        async function fetchJSON(url, options) {
+            try {
+                const res = await fetch(url, options);
+                const text = await res.text();
+                try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+            } catch(e) {
+                console.error('network_error', url, e);
+                return { ok:false, error:'network_error' };
+            }
+        }
+        let typeMap = { Single: 'T001', Double: 'T002', Suite: 'T003', Deluxe: 'T004' };
+        
+        async function initInventory() {
+            const inv = await fetchJSON('http://localhost/api/inventory_get.php');
+            const types = await fetchJSON('http://localhost/api/room_types_get.php');
+            
+            if (types && types.ok) {
+                // Store room types data for later use
+                roomTypesData = types.data;
+                // build type mapping name->id
+                typeMap = {};
+                types.data.forEach(t=>{ typeMap[t.type_name] = t.type_id; });
+                
+                // Dynamically create room cards
+                const roomBox = document.getElementById('roomBox');
+                roomBox.innerHTML = '';
+                
+                types.data.forEach((roomType, index) => {
+                    const roomCard = document.createElement('div');
+                    roomCard.className = 'room-card';
+                    roomCard.innerHTML = `
+                        <div class="room-name">${roomType.type_name}</div>
+                        <div class="room-count">Available: <span id="${roomType.type_name}Count">0</span> rooms</div>
+                        <button class="book-btn" onclick="openBookModal('${roomType.type_name}', ${index})">Book</button>
+                    `;
+                    roomBox.appendChild(roomCard);
+                });
+            }
+            
+            if (inv && inv.ok) {
+                inventory = inv.data;
+                localStorage.setItem(INVENTORY_KEY, JSON.stringify(inventory));
+            } else {
+                const existing = localStorage.getItem(INVENTORY_KEY);
+                if (existing) {
+                    inventory = JSON.parse(existing);
+                } else {
+                    inventory = {};
+                    // Initialize with 0 for each room type
+                    if (types && types.ok) {
+                        types.data.forEach(t => {
+                            inventory[t.type_name] = 0;
+                        });
+                    }
+                }
+            }
+            
+            // Update counts for each room type
+            if (types && types.ok) {
+                types.data.forEach(roomType => {
+                    const countElem = document.getElementById(`${roomType.type_name}Count`);
+                    if (countElem) {
+                        countElem.textContent = inventory[roomType.type_name] || 0;
+                    }
+                });
+            }
+            
+            // Update button states
+            updateButtonStates();
+        }
+        
+        function updateButtonStates() {
+            const buttons = document.querySelectorAll('.book-btn');
+            buttons.forEach((button, idx) => {
+                // Get the room type from the button's onclick attribute
+                const onclickAttr = button.getAttribute('onclick');
+                const match = onclickAttr.match(/openBookModal\('([^']+)'/);
+                if (match) {
+                    const type = match[1];
+                    if ((inventory[type] || 0) === 0) {
+                        button.disabled = true;
+                        button.textContent = 'Sold Out';
+                    } else {
+                        button.disabled = false;
+                        button.textContent = 'Book';
+                    }
+                }
+            });
+        }
+
+        async function openBookModal(type, index) {
+            const typeKey = type;
+            if ((inventory[typeKey]||0) <= 0) {
+                alert('No rooms available!');
+                return;
+            }
+            
+            // Fetch available room from API
+            const roomsResp = await fetchJSON('http://localhost/api/rooms_get.php');
+            let availableRoom = null;
+            
+            if (roomsResp && roomsResp.ok) {
+                // Find first available room of this type
+                const typeId = typeMap[type];
+                availableRoom = roomsResp.data.find(r => 
+                    r.type_id === typeId && r.room_status === 'available'
+                );
+            }
+            
+            if (!availableRoom) {
+                alert('No available room found for ' + type + ' type');
+                return;
+            }
+
+            currentRoomType = type;
+            currentRoomIndex = index;
+
+            document.getElementById('roomInfo').innerHTML = `
+                <strong>Room Type:</strong> ${type} Room<br>
+                <strong>Room Number:</strong> ${availableRoom.room_id}<br>
+                <strong>Available:</strong> ${(inventory[typeKey]||0)} rooms
+            `;
+
+            // Default dates
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            document.getElementById('checkinDate').value = today;
+            document.getElementById('checkoutDate').value = tomorrow.toISOString().split('T')[0];
+
+            // Clear form
+            document.getElementById('guestName').value = '';
+            document.getElementById('phoneNumber').value = '';
+            document.getElementById('companionCount').value = '1';
+
+            document.getElementById('bookModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('bookModal').style.display = 'none';
+        }
+
+        async function confirmBooking() {
+            const name = document.getElementById('guestName').value.trim();
+            const phone = document.getElementById('phoneNumber').value.trim();
+            const companions = document.getElementById('companionCount').value;
+            const checkinDate = document.getElementById('checkinDate').value;
+            const checkinTime = document.getElementById('checkinTime').value;
+            const checkoutDate = document.getElementById('checkoutDate').value;
+            const checkoutTime = document.getElementById('checkoutTime').value;
+
+            if (!name || !phone) {
+                alert('Name and phone required!');
+                return;
+            }
+
+            if (!/^\d{10,15}$/.test(phone)) {
+                alert('Invalid phone number format (10-15 digits)!');
+                return;
+            }
+
+            const checkin = new Date(checkinDate + 'T' + checkinTime);
+            const checkout = new Date(checkoutDate + 'T' + checkoutTime);
+            
+            if (checkin >= checkout) {
+                alert('Check-out must be later than check-in!');
+                return;
+            }
+
+            // Try server order create
+            const typeKey = currentRoomType;
+            const roomNumText = document.getElementById('roomInfo').textContent.match(/Room Number:\s*(\d+)/)?.[1] || '';
+            const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+            
+            // Get price from roomTypesData
+            const roomType = roomTypesData.find(t => t.type_name === typeKey);
+            const pricePerNight = roomType ? parseFloat(roomType.amount) : 0;
+            
+            // Calculate total amount
+            const checkIn = new Date(checkinDate);
+            const checkOut = new Date(checkoutDate);
+            const days = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+            const totalAmount = pricePerNight * days;
+            
+            const payload = {
+                user_id: user.user_id || 'walkin',
+                type_id: typeMap[typeKey] || typeKey,
+                actual_capacity: String(parseInt(companions)),
+                check_in: checkinDate,
+                check_out: checkoutDate,
+                staff_id: user.user_id || 'staff',
+                total_amount: totalAmount
+            };
+
+            try {
+                const resp = await fetchJSON('http://localhost/api/order_create.php', {
+                    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+                });
+                if (resp && resp.ok) {
+                    inventory[typeKey] = ((inventory[typeKey]||0) - 1);
+                    localStorage.setItem(INVENTORY_KEY, JSON.stringify(inventory));
+                    const countElem = document.getElementById(typeKey + 'Count');
+                    if (countElem) countElem.textContent = inventory[typeKey];
+                    updateButtonStates();
+                    alert('Booking confirmed via server');
+                    closeModal();
+                    window.location.href = 'Check_in_out.html';
+                    return;
+                } else {
+                    throw new Error(resp?.error || 'Unknown error');
+                }
+            } catch(err) {
+                console.error('API error:', err);
+                // Fallback local
+                inventory[typeKey] = (inventory[typeKey]||0) - 1;
+                localStorage.setItem(INVENTORY_KEY, JSON.stringify(inventory));
+                const countElem = document.getElementById(typeKey + 'Count');
+                if (countElem) countElem.textContent = inventory[typeKey];
+                updateButtonStates();
+                const orders = JSON.parse(localStorage.getItem(ORDERS_KEY)||'[]');
+                const roomType = roomTypesData.find(t => t.type_name === typeKey);
+                const pricePerNight = roomType ? parseFloat(roomType.amount) : 0;
+                orders.push({
+                    order_id: 'O'+Date.now(), user_id: user.user_id||'walkin', room_id: roomNumText,
+                    type_id: typeKey, actual_capacity: companions,
+                    check_in: checkinDate + ' ' + checkinTime, check_out: checkoutDate + ' ' + checkoutTime,
+                    order_status: 'Reserved', staff_id: user.user_id||'staff', payment_status:'unpaid', amount: pricePerNight
+                });
+                localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+                alert('Server unavailable, saved locally');
+                closeModal();
+                window.location.href = 'Check_in_out.html';
+                return;
+            }
+        }
+        
+        // Initialize data on page load
+        window.onload = function() {
+            initInventory();
+        };
+
+        window.onclick = function(e) {
+            if (e.target.id === 'bookModal') {
+                closeModal();
+            }
+        };
+    </script>
+</body>
+</html>

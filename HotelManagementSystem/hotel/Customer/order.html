@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management</title>
+
+    <link rel="stylesheet" href="../global.css">
+
+    <style>
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        
+        .main-content {
+            flex: 1;
+            padding: 40px;
+        }
+
+        
+        .content-header h1 {
+            margin: 0;
+            font-size: 32px;
+            color: var(--text-main);
+        }
+
+        .content-header p {
+            margin-top: 8px;
+            color: var(--text-secondary);
+        }
+
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            margin-top: 24px;
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: center;
+            border-bottom: 1px solid #e6e6e6;
+            font-size: 15px;
+        }
+
+        th {
+            background: var(--bg-light);
+            font-weight: 600;
+        }
+
+        .cancel-btn {
+            padding: 8px 16px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(255, 68, 68, 0.2);
+        }
+
+        .cancel-btn:hover {
+            background: #cc0000;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(255, 68, 68, 0.3);
+        }
+
+        .cancel-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app-container">
+
+    <nav class="sidebar">
+        <div class="sidebar-header">🏨 Hotel Management System</div>
+
+        <ul class="nav-menu">
+
+            <li class="nav-item">
+                <span class="nav-icon">🏠</span>
+                <a href="home.html" class="nav-link">Home</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">💼</span>
+                <a href="booking.html" class="nav-link">Booking</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="comment.html" class="nav-link">Comment</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="order.html" class="nav-link">Order</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🛎️</span>
+                <a href="service.html" class="nav-link">Service</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🔑</span>
+                <a href="../Staff/Login_Register.html" class="nav-link" id="login-link">Login</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">👤</span>
+                <a href="personal.html" class="nav-link" id="personal-link">Personal Center</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🚪</span>
+                <a href="#" class="nav-link" id="logout-link">Logout</a>
+            </li>
+
+        </ul>
+    </nav>
+    <main class="main-content">
+
+        <div class="content-header">
+            <h1>Your Orders</h1>
+            <p>View and manage your booking orders</p>
+        </div>
+
+        <table id="orderTable">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Room Type</th>
+                    <th>Actual Capacity</th>
+                    <th>Check-in Date</th>
+                    <th>Check-out Date</th>
+                    <th>Status</th>
+                    <th>Operation</th>
+                </tr>
+            </thead>
+
+            <tbody id="orderBody"></tbody>
+        </table>
+
+    </main>
+</div>
+
+<script>
+    const ORDERS_KEY = 'hm_orders';
+    const INVENTORY_KEY = 'hm_inventory';
+
+    async function fetchJSON(url, options){
+        try {
+            const r = await fetch(url, options);
+            const text = await r.text();
+            try { return JSON.parse(text); } catch(e) { console.error('bad_json', url, text); return { ok:false, error:'bad_json' }; }
+        } catch(e) {
+            console.error('network_error', url, e);
+            return { ok:false, error:'network_error' };
+        }
+    }
+    async function renderOrders(){
+        const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+        if (!user || !user.user_id) {
+            alert('Please login first');
+            window.location.href = '../Staff/Login_Register.html';
+            return;
+        }
+        
+        const tbody = document.getElementById('orderBody');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading...</td></tr>';
+        
+        const resp = await fetchJSON('http://localhost/api/orders_get.php?user_id=' + encodeURIComponent(user.user_id||''));
+        const orders = (resp && resp.ok) ? resp.data : [];
+        
+        tbody.innerHTML = '';
+        
+        if (orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);">No orders found</td></tr>';
+            return;
+        }
+        
+        orders.forEach(o=>{
+            const tr = document.createElement('tr');
+            const canCancel = o.order_status === '未入住' || o.order_status === 'Pending';
+            const statusColor = (o.order_status === '已完成' || o.order_status === 'Completed') ? 'green' : 
+                               (o.order_status === '已取消' || o.order_status === 'Cancelled') ? 'red' : 
+                               (o.order_status === '已入住' || o.order_status === 'Checked In') ? 'blue' : 'orange';
+            
+            tr.innerHTML = `
+                <td>${o.order_id}</td>
+                <td>${o.type_id}</td>
+                <td>${o.actual_capacity}</td>
+                <td>${o.check_in}</td>
+                <td>${o.check_out}</td>
+                <td><span style="color:${statusColor};font-weight:600;">${o.order_status}</span></td>
+                <td>
+                    ${canCancel ? `<button class="cancel-btn" data-order-id="${o.order_id}">Cancel</button>` : 
+                                  '<span style="color:var(--text-secondary);">-</span>'}
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        tbody.querySelectorAll('.cancel-btn').forEach(btn=>{
+            btn.addEventListener('click', function(){
+                const id = this.getAttribute('data-order-id');
+                cancelOrder(id);
+            });
+        });
+    }
+
+    async function cancelOrder(orderId) {
+        if (!confirm('Are you sure you want to cancel this order?')) {
+            return;
+        }
+        
+        const resp = await fetchJSON('http://localhost/api/order_cancel.php', {
+            method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({order_id: orderId})
+        });
+        
+        if (resp && resp.ok) {
+            alert('Order cancelled successfully!');
+            renderOrders();
+        } else {
+            alert('Failed to cancel order: ' + (resp?.error || 'Server error'));
+        }
+    }
+if (localStorage.getItem("loggedIn") === null) {
+    localStorage.setItem("loggedIn", "true");
+}
+
+function updateNav() {
+    const loggedIn = localStorage.getItem("loggedIn") === "true";
+    const loginLink = document.getElementById("login-link");
+
+    if (loginLink) loginLink.style.display = loggedIn ? "none" : "block";
+}
+
+renderOrders();
+updateNav();
+const logoutLink = document.getElementById("logout-link");
+if (logoutLink) {
+    logoutLink.addEventListener("click", function(e) {
+        e.preventDefault(); 
+        localStorage.setItem("loggedIn", "false");
+        updateNav();
+        alert("Logout successful!");
+        window.location.href = '../Staff/Login_Register.html';
+    });
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+    const link = item.querySelector('a');
+    if (link && link.href === window.location.href) {
+        item.classList.add('active');
+    } else {
+        item.classList.remove('active');
+    }
+});
+
+</script>
+
+</body>
+</html>

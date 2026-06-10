@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Performance Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .test-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.2);
+        }
+        
+        .test-card h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 1.3em;
+        }
+        
+        .test-card p {
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        
+        .test-btn {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+        
+        .test-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .test-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .performance-display {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .performance-display.fast {
+            border-left-color: #28a745;
+        }
+        
+        .performance-display.medium {
+            border-left-color: #ffc107;
+        }
+        
+        .performance-display.slow {
+            border-left-color: #dc3545;
+        }
+        
+        .perf-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .perf-time {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .perf-time.fast { color: #28a745; }
+        .perf-time.medium { color: #ffc107; }
+        .perf-time.slow { color: #dc3545; }
+        
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .results-section h2 {
+            color: #667eea;
+            margin-bottom: 16px;
+        }
+        
+        .result-item {
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .result-count {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Database Performance Test Panel</h1>
+        
+        <div class="test-grid">
+            <div class="test-card">
+                <h3>🏨 Hotel Query</h3>
+                <p>Test query performance for all hotel information</p>
+                <button class="test-btn" onclick="testHotels()">Run Test</button>
+                <div id="hotels-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>🛏️ Room Type Query</h3>
+                <p>Test query performance for all room types</p>
+                <button class="test-btn" onclick="testRoomTypes()">Run Test</button>
+                <div id="roomtypes-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>📋 Order Query</h3>
+                <p>Test query performance for all orders</p>
+                <button class="test-btn" onclick="testOrders()">Run Test</button>
+                <div id="orders-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>💬 Comment Query</h3>
+                <p>Test query performance for comments by room type</p>
+                <button class="test-btn" onclick="testComments()">Run Test</button>
+                <div id="comments-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>🏠 Room Query</h3>
+                <p>Test query performance for all rooms</p>
+                <button class="test-btn" onclick="testRooms()">Run Test</button>
+                <div id="rooms-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>👥 User Query</h3>
+                <p>Test query performance for all users</p>
+                <button class="test-btn" onclick="testUsers()">Run Test</button>
+                <div id="users-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>🧹 Task Query</h3>
+                <p>Test query performance for all cleaning tasks</p>
+                <button class="test-btn" onclick="testTasks()">Run Test</button>
+                <div id="tasks-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>📊 Room Statistics</h3>
+                <p>Test query performance for room statistics</p>
+                <button class="test-btn" onclick="testRoomStats()">Run Test</button>
+                <div id="roomstats-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>📦 Inventory Query</h3>
+                <p>Test query performance for room type inventory</p>
+                <button class="test-btn" onclick="testInventory()">Run Test</button>
+                <div id="inventory-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>📈 KPI Query</h3>
+                <p>Test query performance for employee KPI statistics</p>
+                <button class="test-btn" onclick="testKPI()">Run Test</button>
+                <div id="kpi-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>➕ Create Order</h3>
+                <p>Test transaction performance for order creation</p>
+                <button class="test-btn" onclick="testOrderCreate()">Run Test</button>
+                <div id="order-create-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>❌ Cancel Order</h3>
+                <p>Test transaction performance for order cancellation</p>
+                <button class="test-btn" onclick="testOrderCancel()">Run Test</button>
+                <div id="order-cancel-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>🧹 Create Cleaning Task</h3>
+                <p>Test insert performance for cleaning task records</p>
+                <button class="test-btn" onclick="testTaskCreate()">Run Test</button>
+                <div id="task-create-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>🗑️ Delete Cleaning Task</h3>
+                <p>Test delete performance for cleaning task records</p>
+                <button class="test-btn" onclick="testTaskDelete()">Run Test</button>
+                <div id="task-delete-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>💬 Create Comment</h3>
+                <p>Test insert performance for user comments</p>
+                <button class="test-btn" onclick="testCommentCreate()">Run Test</button>
+                <div id="comment-create-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>👤 User Registration</h3>
+                <p>Test performance for user registration with validation</p>
+                <button class="test-btn" onclick="testUserRegister()">Run Test</button>
+                <div id="user-register-perf" style="display:none;"></div>
+            </div>
+            
+            <div class="test-card">
+                <h3>🔄 Batch Test</h3>
+                <p>Run all tests and display comprehensive report</p>
+                <button class="test-btn" onclick="runAllTests()">All Tests</button>
+                <div id="batch-perf" style="display:none;"></div>
+            </div>
+        </div>
+        
+        <div class="results-section" id="results" style="display:none;">
+            <h2>📊 Test Results</h2>
+            <div id="results-content"></div>
+        </div>
+    </div>
+    
+    <script>
+        async function fetchJSON(url) {
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                return data;
+            } catch (e) {
+                return { ok: false, error: e.message };
+            }
+        }
+        
+        function getSpeedClass(timeInMs) {
+            if (timeInMs < 50) return 'fast';
+            if (timeInMs < 200) return 'medium';
+            return 'slow';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function displayPerformance(elementId, data, apiName) {
+            const container = document.getElementById(elementId);
+            if (!data || !data.performance) {
+                container.innerHTML = '<div class="performance-display"><div class="perf-label">❌ No performance data</div></div>';
+                container.style.display = 'block';
+                return;
+            }
+            
+            const perf = data.performance;
+            const timeInSec = perf.query_time ?? perf.insert_time ?? perf.delete_time ?? perf.transaction_time ?? perf.register_time ?? 0;
+            const timeInMs = timeInSec * 1000;
+            const speedClass = getSpeedClass(timeInMs);
+            const recordCount = data.data ? (Array.isArray(data.data) ? data.data.length : Object.keys(data.data).length) : 0;
+            
+            let timeLabel = '⏱️ Query Time';
+            if (perf.insert_time !== undefined) timeLabel = '⏱️ Insert Time';
+            else if (perf.delete_time !== undefined) timeLabel = '⏱️ Delete Time';
+            else if (perf.transaction_time !== undefined) timeLabel = '⏱️ Transaction Time';
+            else if (perf.register_time !== undefined) timeLabel = '⏱️ Registration Time';
+            
+            let extraInfo = '';
+            if (recordCount > 0) {
+                extraInfo = `<div class="result-count">Returned ${recordCount} records</div>`;
+            } else if (data.ok) {
+                extraInfo = '<div class="result-count">✅ Operation successful</div>';
+            }
+            
+            container.innerHTML = `
+                <div class="performance-display ${speedClass}">
+                    <div class="perf-label">${timeLabel}</div>
+                    <div class="perf-time ${speedClass}">${perf.formatted}</div>
+                    ${extraInfo}
+                </div>
+            `;
+            container.style.display = 'block';
+        }
+        
+        async function testHotels() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/hotels_get.php');
+            displayPerformance('hotels-perf', data, 'Hotel Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testRoomTypes() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/room_types_get.php');
+            displayPerformance('roomtypes-perf', data, 'Room Type Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testOrders() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/orders_get.php');
+            displayPerformance('orders-perf', data, 'Order Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testComments() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            // First get room type list
+            const typesData = await fetchJSON('http://localhost/api/room_types_get.php');
+            if (typesData.ok && typesData.data && typesData.data.length > 0) {
+                const firstTypeId = typesData.data[0].type_id;
+                const data = await fetchJSON(`http://localhost/api/comments_get.php?type_id=${firstTypeId}`);
+                displayPerformance('comments-perf', data, 'Comment Query');
+            } else {
+                document.getElementById('comments-perf').innerHTML = '<div class="performance-display"><div class="perf-label">❌ No room type data</div></div>';
+                document.getElementById('comments-perf').style.display = 'block';
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testRooms() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/rooms_get.php');
+            displayPerformance('rooms-perf', data, 'Room Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testUsers() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/users_get.php');
+            displayPerformance('users-perf', data, 'User Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testTasks() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/tasks_get.php');
+            displayPerformance('tasks-perf', data, 'Task Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testRoomStats() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/room_stats_get.php');
+            displayPerformance('roomstats-perf', data, 'Room Statistics');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testInventory() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/inventory_get.php');
+            displayPerformance('inventory-perf', data, 'Inventory Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testKPI() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const data = await fetchJSON('http://localhost/api/kpi_get.php');
+            displayPerformance('kpi-perf', data, 'KPI Query');
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function runAllTests() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Running...';
+            
+            const batchDiv = document.getElementById('batch-perf');
+            batchDiv.innerHTML = '<div class="performance-display"><div class="perf-label">🔄 Running tests...</div></div>';
+            batchDiv.style.display = 'block';
+            
+            const results = [];
+            let successCount = 0;
+            let failCount = 0;
+            
+            // Define all tests (sequential execution to prevent concurrency)
+            const tests = [
+                { name: 'Hotel Query', fn: testHotels, btn: document.querySelector('[onclick="testHotels()"]') },
+                { name: 'Room Type Query', fn: testRoomTypes, btn: document.querySelector('[onclick="testRoomTypes()"]') },
+                { name: 'Order Query', fn: testOrders, btn: document.querySelector('[onclick="testOrders()"]') },
+                { name: 'Comment Query', fn: testComments, btn: document.querySelector('[onclick="testComments()"]') },
+                { name: 'Room Query', fn: testRooms, btn: document.querySelector('[onclick="testRooms()"]') },
+                { name: 'User Query', fn: testUsers, btn: document.querySelector('[onclick="testUsers()"]') },
+                { name: 'Task Query', fn: testTasks, btn: document.querySelector('[onclick="testTasks()"]') },
+                { name: 'Room Statistics', fn: testRoomStats, btn: document.querySelector('[onclick="testRoomStats()"]') },
+                { name: 'Inventory Query', fn: testInventory, btn: document.querySelector('[onclick="testInventory()"]') },
+                { name: 'KPI Query', fn: testKPI, btn: document.querySelector('[onclick="testKPI()"]') },
+                { name: 'Create Order', fn: testOrderCreate, btn: document.querySelector('[onclick="testOrderCreate()"]') },
+                { name: 'Cancel Order', fn: testOrderCancel, btn: document.querySelector('[onclick="testOrderCancel()"]') },
+                { name: 'Create Cleaning Task', fn: testTaskCreate, btn: document.querySelector('[onclick="testTaskCreate()"]') },
+                { name: 'Delete Cleaning Task', fn: testTaskDelete, btn: document.querySelector('[onclick="testTaskDelete()"]') },
+                { name: 'Create Comment', fn: testCommentCreate, btn: document.querySelector('[onclick="testCommentCreate()"]') },
+                { name: 'User Registration', fn: testUserRegister, btn: document.querySelector('[onclick="testUserRegister()"]') }
+            ];
+            
+            console.log('🚀 Starting batch test, total of ' + tests.length + ' tests');
+            
+            // Execute each test sequentially
+            for (let i = 0; i < tests.length; i++) {
+                const test = tests[i];
+                console.log(`📋 [${i+1}/${tests.length}] Test: ${test.name}`);
+                
+                batchDiv.innerHTML = `
+                    <div class="performance-display">
+                        <div class="perf-label">🔄 Running [${i+1}/${tests.length}]</div>
+                        <div class="result-count">${test.name}</div>
+                    </div>
+                `;
+                
+                try {
+                    // Simulate click event object
+                    const mockEvent = { target: test.btn };
+                    window.event = mockEvent;
+                    
+                    // Execute test
+                    await test.fn();
+                    
+                    // Wait a short time for UI update
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    successCount++;
+                    results.push({ name: test.name, status: 'success' });
+                    console.log(`✅ [${i+1}/${tests.length}] ${test.name} completed`);
+                } catch (error) {
+                    failCount++;
+                    results.push({ name: test.name, status: 'failed', error: error.message });
+                    console.error(`❌ [${i+1}/${tests.length}] ${test.name} failed:`, error);
+                }
+            }
+            
+            // Display summary
+            console.log('🎉 Batch test completed!');
+            
+            let summaryHtml = '<div class="performance-display"><div class="perf-label">✅ Test Completed</div><div class="result-count" style="margin-top:12px;">';
+            summaryHtml += `Total <strong>${tests.length}</strong> APIs tested<br>`;
+            summaryHtml += `Success: <strong style="color:#28a745;">${successCount}</strong><br>`;
+            if (failCount > 0) {
+                summaryHtml += `Failed: <strong style="color:#dc3545;">${failCount}</strong><br><br>`;
+                summaryHtml += '<div style="text-align:left;font-size:12px;"><strong>Failed List:</strong><br>';
+                results.filter(r => r.status === 'failed').forEach(r => {
+                    summaryHtml += `❌ ${r.name}: ${r.error}<br>`;
+                });
+                summaryHtml += '</div>';
+            }
+            summaryHtml += '<br>See detailed results below each test card</div></div>';
+            
+            batchDiv.innerHTML = summaryHtml;
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        // Insert/delete operation tests
+        let lastCreatedOrderId = null;
+        let lastCreatedTaskId = null;
+        
+        async function testOrderCreate() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            // Simulate frontend logic: get user from localStorage or use test user
+            const user = JSON.parse(localStorage.getItem('hm_user') || '{"user_id":"U001","user_name":"customer1"}');
+            
+            // First get an available room type
+            const typesData = await fetchJSON('http://localhost/api/room_types_get.php');
+            if (!typesData.ok || !typesData.data || typesData.data.length === 0) {
+                document.getElementById('order-create-perf').innerHTML = '<div class="performance-display"><div class="perf-label">❌ No available room types</div></div>';
+                document.getElementById('order-create-perf').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Retest';
+                return;
+            }
+            
+            const roomType = typesData.data[0];
+            const typeId = roomType.type_id;
+            const price = parseFloat(roomType.basic_amount);
+            
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const dayAfter = new Date();
+            dayAfter.setDate(dayAfter.getDate() + 2);
+            
+            const checkIn = tomorrow.toISOString().split('T')[0];
+            const checkOut = dayAfter.toISOString().split('T')[0];
+            
+            // Calculate total amount (simulate frontend logic)
+            const days = Math.ceil((dayAfter - tomorrow) / (1000 * 60 * 60 * 24));
+            const totalAmount = price * days;
+            
+            // Construct request exactly like Customer/booking.html
+            const payload = {
+                user_id: user.user_id,
+                room_id: '',              // Frontend sends empty string
+                type_id: typeId,
+                actual_capacity: 1,
+                check_in: checkIn,
+                check_out: checkOut,
+                staff_id: '',             // Frontend sends empty string
+                total_amount: totalAmount
+            };
+            
+            const data = await fetch('http://localhost/api/order_create.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+            
+            if (data.ok && data.order_id) {
+                lastCreatedOrderId = data.order_id;
+            }
+            
+            displayPerformance('order-create-perf', data, 'Create Order');
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testOrderCancel() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 测试中...';
+            
+            let orderId = lastCreatedOrderId;
+            
+            // If no recently created order, query for a pending order
+            if (!orderId) {
+                const ordersData = await fetchJSON('http://localhost/api/orders_get.php');
+                if (ordersData.ok && ordersData.data && ordersData.data.length > 0) {
+                    const pendingOrder = ordersData.data.find(o => o.order_status === '未入住');
+                    if (pendingOrder) orderId = pendingOrder.order_id;
+                }
+            }
+            
+            if (!orderId) {
+                document.getElementById('order-cancel-perf').innerHTML = '<div class="performance-display"><div class="perf-label">❌ 无可取消订单<br><small>请先运行"订单创建"测试</small></div></div>';
+                document.getElementById('order-cancel-perf').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = '重新测试';
+                return;
+            }
+            
+            const data = await fetch('http://localhost/api/order_cancel.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId })
+            }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+            
+            if (data.ok) lastCreatedOrderId = null;
+            
+            displayPerformance('order-cancel-perf', data, 'Cancel Order');
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testTaskCreate() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const perfDiv = document.getElementById('task-create-perf');
+            
+            try {
+                // First get a room (simulate user selecting from room list)
+                const roomsData = await fetchJSON('http://localhost/api/rooms_get.php');
+                console.log('🏠 Room data:', roomsData);
+                
+                if (!roomsData.ok || !roomsData.data || roomsData.data.length === 0) {
+                    perfDiv.innerHTML = `
+                        <div class="performance-display slow">
+                            <div class="perf-label">❌ Test failed: No available rooms</div>
+                            <div class="result-count" style="color:#666;margin-top:8px;">
+                                API response: ${JSON.stringify(roomsData, null, 2)}
+                            </div>
+                        </div>
+                    `;
+                    perfDiv.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Retest';
+                    return;
+                }
+                
+                // Frontend logic: user enters room number in text box (e.g. "R0001")
+                // Here we use actual room_id from API to simulate correct input
+                const room = roomsData.data[0].room_id;  // e.g.: "R0001"
+                
+                // Frontend logic: get form values
+                const date = new Date().toISOString().split('T')[0];  // Today's date
+                const start = '10:00';  // Start time
+                const cleaner = '';     // Optional cleaner (empty = unassigned)
+                
+                // Frontend logic: format as "YYYY-MM-DD HH:MM:SS"
+                const wishTime = `${date} ${start}:00`;
+                
+                // Frontend logic: construct payload (front desk creation, uses cleaner_id)
+                const payload = {
+                    room_id: room,
+                    cleaner_id: cleaner || '',
+                    wish_time: wishTime
+                };
+                
+                console.log('📤 Sending cleaning task creation request:', payload);
+                
+                const response = await fetch('http://localhost/api/task_create.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                console.log('📥 Response status:', response.status, response.statusText);
+                
+                const rawText = await response.text();
+                console.log('📄 Raw response text:', rawText);
+                
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (e) {
+                    data = {
+                        ok: false,
+                        error: 'JSON parsing failed: ' + e.message,
+                        rawResponse: rawText
+                    };
+                }
+                
+                console.log('📋 Response data:', data);
+                
+                if (data.ok && data.task_id) {
+                    lastCreatedTaskId = data.task_id;
+                    displayPerformance('task-create-perf', data, 'Create Cleaning Task');
+                } else {
+                    // Display detailed error information
+                    const rawResponseHtml = data.rawResponse 
+                        ? `<strong>Raw response content:</strong><br>
+                           <pre style="background:#f8f9fa;padding:8px;border-radius:4px;margin:4px 0;text-align:left;max-height:300px;overflow:auto;">${escapeHtml(data.rawResponse)}</pre>`
+                        : '';
+                    
+                    perfDiv.innerHTML = `
+                        <div class="performance-display slow">
+                            <div class="perf-label">❌ Creation failed</div>
+                            <div class="result-count" style="margin-top:12px;font-family:monospace;font-size:12px;color:#dc3545;">
+                                <strong>Error message:</strong> ${data.error || 'Unknown error'}<br><br>
+                                <strong>Request parameters:</strong><br>
+                                <pre style="background:#f8f9fa;padding:8px;border-radius:4px;margin:4px 0;text-align:left;">${JSON.stringify(payload, null, 2)}</pre>
+                                <strong>Response status:</strong> ${response.status} ${response.statusText}<br><br>
+                                ${rawResponseHtml}
+                                <strong>Parsed data:</strong><br>
+                                <pre style="background:#f8f9fa;padding:8px;border-radius:4px;margin:4px 0;text-align:left;max-height:200px;overflow:auto;">${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                    perfDiv.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('💥 Test exception:', error);
+                perfDiv.innerHTML = `
+                    <div class="performance-display slow">
+                        <div class="perf-label">❌ Test exception</div>
+                        <div class="result-count" style="margin-top:12px;color:#dc3545;">
+                            <strong>Exception type:</strong> ${error.name}<br>
+                            <strong>Exception message:</strong> ${error.message}<br>
+                            <strong>Stack trace:</strong><br>
+                            <pre style="background:#f8f9fa;padding:8px;border-radius:4px;margin:4px 0;text-align:left;font-size:11px;max-height:150px;overflow:auto;">${error.stack}</pre>
+                        </div>
+                    </div>
+                `;
+                perfDiv.style.display = 'block';
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testTaskDelete() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            let taskId = lastCreatedTaskId;
+            
+            // If no recently created task, query for a pending task
+            if (!taskId) {
+                const tasksData = await fetchJSON('http://localhost/api/tasks_get.php');
+                if (tasksData.ok && tasksData.data && tasksData.data.length > 0) {
+                    const pendingTask = tasksData.data.find(t => t.task_status === 'pending');
+                    if (pendingTask) taskId = pendingTask.task_id;
+                }
+            }
+            
+            if (!taskId) {
+                document.getElementById('task-delete-perf').innerHTML = '<div class="performance-display"><div class="perf-label">❌ No task to delete<br><small>Please run "Create Cleaning Task" test first</small></div></div>';
+                document.getElementById('task-delete-perf').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Retest';
+                return;
+            }
+            
+            const data = await fetch('http://localhost/api/task_delete.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task_id: taskId })
+            }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+            
+            if (data.ok) lastCreatedTaskId = null;
+            
+            displayPerformance('task-delete-perf', data, 'Delete Cleaning Task');
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        async function testCommentCreate() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            // Simulate frontend logic: get user from localStorage
+            const user = JSON.parse(localStorage.getItem('hm_user') || '{"user_id":"U001","user_name":"customer1"}');
+            
+            // First get room types
+            const typesData = await fetchJSON('http://localhost/api/room_types_get.php');
+            
+            if (!typesData.ok || !typesData.data || typesData.data.length === 0) {
+                document.getElementById('comment-create-perf').innerHTML = '<div class="performance-display"><div class="perf-label">❌ No available room types</div></div>';
+                document.getElementById('comment-create-perf').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Retest';
+                return;
+            }
+            
+            const typeId = typesData.data[0].type_id;
+            const rating = 5;
+            const text = 'Performance test comment - ' + new Date().toISOString();
+            
+            // Construct request exactly like Customer/comment.html
+            const payload = {
+                user_id: user.user_id,
+                type_id: typeId,
+                score: parseInt(rating, 10),
+                text: text
+            };
+            
+            const data = await fetch('http://localhost/api/comment_create.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+            
+            displayPerformance('comment-create-perf', data, 'Create Comment');
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        async function testUserRegister() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> Testing...';
+            
+            const timestamp = Date.now();
+            const phone = '138' + timestamp.toString().slice(-8);  // Generate 11-digit phone number
+            const email = 'test' + timestamp + '@example.com';
+            const password = 'test123456';
+            
+            // Construct request exactly like Staff/Login_Register.html
+            const payload = {
+                user_name: phone,         // Frontend uses phone as username
+                user_phone: phone,
+                user_email: email,
+                password: password,
+                user_type: 'customer',
+                role_id: 'customer'       // Frontend sends this field (though database doesn't have it)
+            };
+            
+            const data = await fetch('http://localhost/api/user_register.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+            
+            displayPerformance('user-register-perf', data, 'User Registration');
+            btn.disabled = false;
+            btn.textContent = 'Retest';
+        }
+        
+        // Display message when page loads
+        console.log('%c⚡ Performance test panel loaded', 'color: #667eea; font-size: 16px; font-weight: bold;');
+        console.log('Click each test button to view database query/insert/delete performance');
+    </script>
+</body>
+</html>

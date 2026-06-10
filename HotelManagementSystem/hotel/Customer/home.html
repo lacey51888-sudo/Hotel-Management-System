@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Management System - Home</title>
+    <link rel="stylesheet" href="../global.css">
+
+    <style>
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-main);
+            margin: 0;
+            padding: 0;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* main*/
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-lg);
+        }
+
+        .content-header {
+            background: var(--bg-card);
+            padding: var(--spacing-lg);
+            border-radius: 10px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: var(--spacing-xl);
+        }
+
+        h1 {
+            margin: 0;
+        }
+
+        /* card */
+        .hotels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+            gap: var(--spacing-lg);
+        }
+
+        .hotel-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            transition: 0.25s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hotel-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .hotel-image {
+            height: 200px;
+            font-size: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #2c5aa0, #4d7fc7);
+            color: white;
+        }
+
+        .hotel-info {
+            padding: var(--spacing-lg);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .hotel-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .hotel-location {
+            margin-bottom: var(--spacing-md);
+            color: var(--text-secondary);
+        }
+
+        .hotel-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--spacing-lg);
+            flex: 1;
+        }
+
+        .hotel-stats {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            margin-bottom: var(--spacing-lg);
+            border-top: 1px solid var(--border);
+            padding-top: var(--spacing-md);
+        }
+
+        .stat-number {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border-radius: 6px;
+            padding: var(--spacing-md);
+            font-size: 16px;
+            text-align: center;
+            display: block;
+            text-decoration: none;
+            transition: 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+    </style>
+</head>
+
+<body>
+<div class="app-container">
+
+    <nav class="sidebar">
+        <div class="sidebar-header">🏨 Hotel Management System</div>
+
+        <ul class="nav-menu">
+
+            <li class="nav-item active">
+                <span class="nav-icon">🏠</span>
+                <a href="home.html" class="nav-link">Home</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">💼</span>
+                <a href="booking.html" class="nav-link" id="booking-link">Booking</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="comment.html" class="nav-link" id="comment-link">Comment</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">📦</span>
+                <a href="order.html" class="nav-link" id="order-link">Order</a>
+            </li>
+
+            <li class="nav-item">
+                <span class="nav-icon">🛎️</span>
+                <a href="service.html" class="nav-link" id="service-link">Service</a>
+            </li>
+
+            <li class="nav-item" id="login-nav">
+                <span class="nav-icon">🔑</span>
+                <a href="../Staff/Login_Register.html" class="nav-link">Login</a>
+            </li>
+
+            <li class="nav-item" id="personal-nav">
+                <span class="nav-icon">👤</span>
+                <a href="personal.html" class="nav-link">Personal Center</a>
+            </li>
+
+            <li class="nav-item" id="logout-nav">
+                <span class="nav-icon">🚪</span>
+                <a href="#" class="nav-link" id="logout-link">Logout</a>
+            </li>
+
+        </ul>
+    </nav>
+
+    <!-- main -->
+    <main class="main-content">
+        <div class="content-header">
+            <h1>Welcome to the Hotel Management System</h1>
+            <p style="color:var(--text-secondary); margin-top:8px;">
+                Please choose a hotel to start booking
+            </p>
+        </div>
+
+        <div class="hotels-grid" id="hotelsGrid">
+            <!-- Hotels will be loaded dynamically -->
+        </div>
+    </main>
+
+</div>
+
+<script>
+async function fetchJSON(url, options){
+    try {
+        const r = await fetch(url, options);
+        const text = await r.text();
+        try { return JSON.parse(text); } catch(e) { return { ok:false, error:'bad_json' }; }
+    } catch(e) {
+        return { ok:false, error:'network_error' };
+    }
+}
+
+async function loadHotels() {
+    const grid = document.getElementById('hotelsGrid');
+    grid.innerHTML = '<p style="text-align:center;padding:40px;">Loading hotels...</p>';
+    
+    const resp = await fetchJSON('http://localhost/api/hotels_get.php');
+    
+    if (resp && resp.ok && resp.data && resp.data.length > 0) {
+        grid.innerHTML = '';
+        
+        // Fetch room statistics once (single hotel system)
+        const statsResp = await fetchJSON('http://localhost/api/room_stats_get.php');
+        const stats = statsResp && statsResp.ok ? statsResp.data : {
+            total_rooms: 0,
+            occupied_rooms: 0,
+            today_bookings: 0
+        };
+        
+        for (const hotel of resp.data) {
+            
+            const card = document.createElement('div');
+            card.className = 'hotel-card';
+            card.innerHTML = `
+                <div class="hotel-image">🏢</div>
+                <div class="hotel-info">
+                    <h2 class="hotel-name">${hotel.hotel_name || 'Hotel'}</h2>
+                    <div class="hotel-location">📍 ${hotel.address || 'Address not available'}</div>
+                    <p class="hotel-description">
+                        ${hotel.description || 'No description available'}<br>
+                        ${hotel.country ? '🌍 ' + hotel.country : ''}<br>
+                        ${hotel.hotel_phone ? '☎️ ' + hotel.hotel_phone : ''}<br>
+                        ⭐ Rating: ${hotel.score || 'N/A'}
+                    </p>
+                    <div class="hotel-stats">
+                        <div>
+                            <div class="stat-number">${stats.total_rooms}</div>
+                            <div class="stat-label">Total Rooms</div>
+                        </div>
+                        <div>
+                            <div class="stat-number">${stats.occupied_rooms}</div>
+                            <div class="stat-label">Occupied</div>
+                        </div>
+                        <div>
+                            <div class="stat-number">${stats.today_bookings}</div>
+                            <div class="stat-label">Today's Booking</div>
+                        </div>
+                    </div>
+                    <a href="booking.html" class="btn-primary" onclick="return checkLoginAndBook(event)">Book Now</a>
+                </div>
+            `;
+            grid.appendChild(card);
+        }
+    } else {
+        // Fallback message when no hotels are available
+        grid.innerHTML = `
+            <div style="text-align:center;padding:40px;">
+                <p>No hotels available at the moment. Please try again later.</p>
+            </div>
+        `;
+    }
+}
+
+function checkLoginAndBook(e) {
+    const user = localStorage.getItem('hm_user');
+    const loggedIn = user && user !== 'null';
+    
+    if (!loggedIn) {
+        e.preventDefault();
+        alert('Please Login first');
+        window.location.href = '../Staff/Login_Register.html';
+        return false;
+    }
+    return true;
+}
+
+function updateNav() {
+    const user = localStorage.getItem('hm_user');
+    const loggedIn = user && user !== 'null';
+    
+    // Get navigation items (li elements)
+    const loginNav = document.getElementById("login-nav");
+    const personalNav = document.getElementById("personal-nav");
+    const logoutNav = document.getElementById("logout-nav");
+    const bookingLink = document.getElementById("booking-link");
+    const commentLink = document.getElementById("comment-link");
+    const orderLink = document.getElementById("order-link");
+    const serviceLink = document.getElementById("service-link");
+    
+    if (loggedIn) {
+        // Logged in: hide Login, show all other items
+        if (loginNav) loginNav.style.display = "none";
+        if (personalNav) personalNav.style.display = "block";
+        if (logoutNav) logoutNav.style.display = "block";
+        if (bookingLink) bookingLink.parentElement.style.display = "block";
+        if (commentLink) commentLink.parentElement.style.display = "block";
+        if (orderLink) orderLink.parentElement.style.display = "block";
+        if (serviceLink) serviceLink.parentElement.style.display = "block";
+    } else {
+        // Not logged in: only show Home and Login
+        if (loginNav) loginNav.style.display = "block";
+        if (personalNav) personalNav.style.display = "none";
+        if (logoutNav) logoutNav.style.display = "none";
+        if (bookingLink) bookingLink.parentElement.style.display = "none";
+        if (commentLink) commentLink.parentElement.style.display = "none";
+        if (orderLink) orderLink.parentElement.style.display = "none";
+        if (serviceLink) serviceLink.parentElement.style.display = "none";
+    }
+}
+
+updateNav();
+
+const logoutLink = document.getElementById("logout-link");
+if (logoutLink) {
+    logoutLink.addEventListener("click", function(e) {
+        e.preventDefault(); 
+        localStorage.removeItem('hm_user');
+        localStorage.setItem("loggedIn", "false");
+        alert("Logout successful!");
+        // Refresh page to ensure navigation bar displays correctly
+        window.location.reload();
+    });
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+    const link = item.querySelector('a');
+    if (link && link.href === window.location.href) {
+        item.classList.add('active');
+    } else {
+        item.classList.remove('active');
+    }
+});
+
+// Load hotels on page load
+loadHotels();
+
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cleaner Tasks - Hotel System</title>
+    <link rel="stylesheet" href="../../global.css">
+    <link rel="stylesheet" href="../global_modal.css">
+    <link rel="stylesheet" href="cleaner.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <nav class="sidebar">
+            <div class="sidebar-header">🏨 Hotel Management System</div>
+            <ul class="nav-menu">
+                <li class="nav-item active">
+                    <span class="nav-icon">🧹</span>
+                    <a href="./Cleaner_HomePage.html" class="nav-link">My Tasks</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <a href="./Cleaner_Information.html" class="nav-link">Personal Account</a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-icon">🚪</span>
+                    <a href="../Login_Register.html" class="nav-link">Logout</a>
+                </li>
+            </ul>
+        </nav>
+
+        <main class="main-content">
+            <div class="header-box" style="background-color: #2c5aa0; color: white;">
+                <h1 style="color:white;">Time Test: Insertion / Deletion / Search</h1>
+                <p class="subtitle" style="color: white;"><a href="../../performance_test.html" class="nav-link">Click here!</a></p>
+            </div>
+            <div class="content-header">
+                <h1>My Cleaning Tasks</h1>
+                <button class="btn btn-primary" onclick="refreshPage()">🔄 Refresh</button>
+            </div>
+
+            <div class="user-info-box">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-id" id="userId">ID: -</div>
+                </div>
+            </div>
+
+            <div class="stats-box">
+                <div class="stat-box">
+                    <div class="stat-number" id="pendingCount">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="inProgressCount">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="completedCount">0</div>
+                    <div class="stat-label">Completed Today</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="overdueCount">0</div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+            </div>
+
+            <div class="task-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Task ID</th>
+                            <th>Room</th>
+                            <th>Time</th>
+                            <th>Notes</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+            <tbody id="taskList"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="completeModal" class="modal">
+        <div class="modal-content">
+            <h3>Complete Task?</h3>
+            <div id="completeInfo" style="margin: 15px 0; padding: 10px; background: #f5f5f5; border-radius: 4px;"></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-confirm" onclick="confirmComplete()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // RBAC guard: only cleaner
+        (function(){
+            try {
+                const user = JSON.parse(localStorage.getItem('hm_user')||'null');
+                const role = user && user.role_id;
+                if (role !== 'cleaner') {
+                    alert('No permission to access cleaner pages');
+                    window.location.href = '../Login_Register.html';
+                    return;
+                }
+            } catch(e) {
+                window.location.href = '../Login_Register.html';
+                return;
+            }
+        })();
+        let currentTask = null;
+        
+        async function fetchJSON(url, options){ try { const r=await fetch(url, options); return await r.json(); } catch(e){ return null; } }
+        
+        async function renderTasks() {
+            const user = JSON.parse(localStorage.getItem('hm_user')||'{}');
+            
+            // Update user info
+            document.getElementById('userAvatar').textContent = user.user_name ? user.user_name.charAt(0).toUpperCase() : 'U';
+            document.getElementById('userName').textContent = user.user_name || 'Unknown';
+            document.getElementById('userId').textContent = 'ID: ' + (user.user_id || '-');
+            
+            const api = await fetchJSON('http://localhost/api/tasks_get.php');
+            const list = (api && api.ok ? api.data : JSON.parse(localStorage.getItem('hm_tasks')||'[]')).filter(t=>t.cleaner_id===user.user_id || t.cleaner_id===user.user_name);
+            
+            // Calculate stats
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+            let pendingCount = 0, inProgressCount = 0, completedCount = 0, overdueCount = 0;
+            
+            list.forEach(t => {
+                if (t.task_status === 'pending') pendingCount++;
+                else if (t.task_status === 'in-progress') inProgressCount++;
+                else if (t.task_status === 'completed') {
+                    // Check if completed today
+                    const completedDate = t.actual_end_time ? t.actual_end_time.split(' ')[0] : '';
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    if (completedDate === todayStr) completedCount++;
+                }
+                
+                // Check overdue (wish_time passed and not completed)
+                if (t.wish_time && t.task_status !== 'completed') {
+                    const wishDate = new Date(t.wish_time.split(' ')[0]);
+                    wishDate.setHours(0, 0, 0, 0);
+                    if (wishDate < today) overdueCount++;
+                }
+            });
+            
+            // Update stats display
+            document.getElementById('pendingCount').textContent = pendingCount;
+            document.getElementById('inProgressCount').textContent = inProgressCount;
+            document.getElementById('completedCount').textContent = completedCount;
+            document.getElementById('overdueCount').textContent = overdueCount;
+            
+            const tbody = document.getElementById('taskList');
+            tbody.innerHTML = '';
+            
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
+            
+            list.forEach(t=>{
+                const tr = document.createElement('tr');
+                let overdue = false;
+                if (t.wish_time && t.task_status !== 'completed') {
+                    const wishDate = new Date(t.wish_time.split(' ')[0]);
+                    wishDate.setHours(0, 0, 0, 0);
+                    overdue = wishDate < todayDate;
+                }
+                if (overdue) tr.classList.add('overdue');
+                const statusClass = t.task_status==='completed'?'status-completed':t.task_status==='in-progress'?'status-in-progress':'status-pending';
+                tr.innerHTML = `
+                    <td>${t.task_id}</td>
+                    <td>${t.room_id}</td>
+                    <td>${t.wish_time||''}${overdue? ' <span class="overdue-badge">Overdue</span>':''}</td>
+                    <td>${t.notes||''}</td>
+                    <td><span class="status-badge ${statusClass}">${t.task_status==='completed'?'Completed':t.task_status==='in-progress'?'In Progress':'Pending'}</span></td>
+                    <td>
+                        <button class="btn btn-primary" ${t.task_status!=='pending'?'disabled':''} onclick="startTask(this, '${t.task_id}')">Start</button>
+                        <button class="btn btn-secondary" ${t.task_status!=='in-progress'?'disabled':''} onclick="endTask(this, '${t.task_id}')">End</button>
+                    </td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function startTask(btn, taskId) {
+            const inProgressBtn = document.querySelector('button[onclick^="endTask"]:not(:disabled)');
+            if (inProgressBtn) {
+                alert('Please finish current task first!');
+                return;
+            }
+            
+            if (confirm('Start task ' + taskId + '?')) {
+                const row = btn.closest('tr');
+                const statusCell = row.cells[4];
+                const buttons = row.cells[5].querySelectorAll('button');
+                
+                statusCell.innerHTML = '<span class="status-badge status-in-progress">In Progress</span>';
+                buttons[0].disabled = true;
+                buttons[1].disabled = false;
+                await fetchJSON('http://localhost/api/task_update_status.php', {
+                    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ task_id: taskId, task_status:'in-progress' })
+                });
+                alert('Task started: ' + taskId);
+                renderTasks(); // Refresh stats
+            }
+        }
+        
+        function endTask(btn, taskId) {
+            currentTask = {
+                id: taskId,
+                room: btn.closest('tr').cells[1].textContent,
+                notes: btn.closest('tr').cells[3].textContent
+            };
+            
+            document.getElementById('completeInfo').innerHTML = `
+                <strong>Task:</strong> ${currentTask.id}<br>
+                <strong>Room:</strong> ${currentTask.room}<br>
+                <strong>Notes:</strong> ${currentTask.notes}
+            `;
+            
+            document.getElementById('completeModal').style.display = 'block';
+        }
+        
+        async function confirmComplete() {
+            if (!currentTask) return;
+            
+            const row = Array.from(document.querySelectorAll('#taskList tr')).find(
+                r => r.cells[0].textContent === currentTask.id
+            );
+            
+            if (row) {
+                row.cells[4].innerHTML = '<span class="status-badge status-completed">Completed</span>';
+                const buttons = row.cells[5].querySelectorAll('button');
+                buttons[0].disabled = true;
+                buttons[1].disabled = true;
+                row.classList.remove('overdue');
+            }
+            
+            await fetchJSON('http://localhost/api/task_update_status.php', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ task_id: currentTask.id, task_status:'completed' })
+            });
+            alert('Task completed: ' + currentTask.id);
+            closeModal();
+            renderTasks(); // Refresh stats and task list
+        }
+        
+        function closeModal() {
+            document.getElementById('completeModal').style.display = 'none';
+            currentTask = null;
+        }
+        
+        function refreshPage() {
+            location.reload();
+        }
+        
+        window.onload = function() { renderTasks(); };
+        
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) {
+                closeModal();
+            }
+        };
+    </script>
+</body>
+</html>

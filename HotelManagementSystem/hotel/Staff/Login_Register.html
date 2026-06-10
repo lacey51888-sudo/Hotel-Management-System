@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="global_modal.css">
+    <link rel="stylesheet" href="login_register.css">
+    <title>Hotel - Login/Register</title>
+</head>
+<body>
+    <div class="auth-container">
+        <!-- Login Card -->
+        <div class="auth-card" id="loginCard">
+            <div class="auth-header">
+                <h2 class="auth-title">🔐 User Login</h2>
+                <p class="auth-subtitle">Welcome back to the Hotel Management System</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>👤 Login Role</label>
+                    <div class="role-selector">
+                        <button type="button" class="role-btn active" onclick="selectLoginRole('customer')">Customer</button>
+                        <button type="button" class="role-btn" onclick="selectLoginRole('employee')">Staff</button>
+                    </div>
+                </div>
+
+                <div class="form-group employee-login-role" id="employeeLoginRole">
+                    <label>🎯 Staff Position</label>
+                    <select id="loginEmployeePosition">
+                        <option value="cleaner">Cleaner</option>
+                        <option value="reception">Front Desk</option>
+                        <option value="manager">Manager</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>📱 Phone Number</label>
+                    <input type="tel" id="loginPhone" placeholder="Please enter phone number" required>
+                </div>
+
+                <div class="form-group">
+                    <label>🔑 Password</label>
+                    <input type="password" id="loginPassword" placeholder="Please enter password" required>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+
+                <div class="forgot-password">
+                    <a href="#" onclick="openForgotModal()">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="auth-btn">Login</button>
+            </form>
+
+            <div class="switch-auth">
+                Don't have an account?<a href="#" onclick="switchToRegister()">Register now</a>
+            </div>
+        </div>
+
+        <!-- Registration Card -->
+        <div class="auth-card" id="registerCard" style="display: none;">
+            <div class="auth-header">
+                <h2 class="auth-title">📝 Customer Registration</h2>
+                <p class="auth-subtitle">Create your customer account</p>
+            </div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>📱 Phone Number *</label>
+                    <input type="tel" id="regPhone" placeholder="Please enter phone number" required>
+                </div>
+
+                <div class="form-group">
+                    <label>📧 Email *</label>
+                    <input type="email" id="regEmail" placeholder="Please enter email" required>
+                </div>
+
+                <div class="form-group">
+                    <label>🔑 Password *</label>
+                    <input type="password" id="regPassword" placeholder="Please enter password (6-20 characters)" required>
+                    <div class="form-hint">6-20 characters, letters and numbers recommended</div>
+                </div>
+
+                <div class="form-group">
+                    <label>✅ Confirm Password *</label>
+                    <input type="password" id="regConfirmPassword" placeholder="Please enter password again" required>
+                </div>
+
+                <button type="submit" class="auth-btn">Register Account</button>
+            </form>
+
+            <div class="switch-auth">
+                Already have an account?<a href="#" onclick="switchToLogin()">Login now</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgotModal" class="modal">
+        <div class="modal-content">
+            <h3>🔑 Reset Password</h3>
+            
+            <div class="form-group">
+                <label>📱 Registered Phone Number</label>
+                <input type="tel" id="resetPhone" placeholder="Please enter your registered phone number" required>
+            </div>
+
+            <div class="form-group">
+                <label>📨 Verification Code</label>
+                <input type="text" id="verifyCode" placeholder="Please enter SMS verification code">
+                <button class="verify-btn" onclick="sendVerifyCode()">Send Code</button>
+            </div>
+
+            <div class="form-group">
+                <label>🔑 New Password</label>
+                <input type="password" id="resetPassword" placeholder="Please enter new password (6-20 characters)" required>
+            </div>
+
+            <div class="form-group">
+                <label>✅ Confirm Password</label>
+                <input type="password" id="resetConfirmPassword" placeholder="Please enter new password again" required>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeForgotModal()">Cancel</button>
+                <button class="btn-confirm" onclick="confirmReset()">Confirm Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Validation tools
+        const validateUtils = {
+            phone: (phone) => /^1[3-9]\d{9}$/.test(phone),
+            email: (email) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email),
+            password: (pwd) => pwd.length >= 6 && pwd.length <= 20
+        };
+
+        // Choose login role
+        function selectLoginRole(role) {
+            document.querySelectorAll('#loginCard .role-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('employeeLoginRole').classList.toggle('show', role === 'employee');
+        }
+
+        // Switch pages
+        function switchToRegister() {
+            document.getElementById('loginCard').style.display = 'none';
+            document.getElementById('registerCard').style.display = 'block';
+        }
+
+        function switchToLogin() {
+            document.getElementById('registerCard').style.display = 'none';
+            document.getElementById('loginCard').style.display = 'block';
+        }
+
+        // Modal controls
+        function openForgotModal() {
+            document.getElementById('forgotModal').style.display = 'block';
+        }
+
+        function closeForgotModal() {
+            document.getElementById('forgotModal').style.display = 'none';
+            document.querySelectorAll('#forgotModal input').forEach(input => input.value = '');
+        }
+
+        // Send verification code
+        function sendVerifyCode() {
+            const phone = document.getElementById('resetPhone').value;
+            if (!validateUtils.phone(phone)) {
+                alert('Please enter correct phone number format');
+                return;
+            }
+            alert('Verification code sent to: ' + phone);
+        }
+
+        // Confirm reset password
+        function confirmReset() {
+            const phone = document.getElementById('resetPhone').value;
+            const code = document.getElementById('verifyCode').value;
+            const password = document.getElementById('resetPassword').value;
+            const confirm = document.getElementById('resetConfirmPassword').value;
+
+            if (!validateUtils.phone(phone)) return alert('Invalid phone number format');
+            if (!phone || !code || !password || !confirm) return alert('Please fill all fields');
+            if (password !== confirm) return alert('Passwords do not match');
+            if (!validateUtils.password(password)) return alert('Password must be 6-20 characters');
+
+            alert('Password reset successful! Please login again.');
+            closeForgotModal();
+        }
+
+        // API helper
+        async function fetchJSON(url, options){
+            try {
+                const r = await fetch(url, options);
+                const text = await r.text();
+                try { return JSON.parse(text); } catch(e) { return { ok:false, error:'bad_json' }; }
+            } catch(e) {
+                return { ok:false, error:'network_error' };
+            }
+        }
+
+        // Login submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const phone = document.getElementById('loginPhone').value;
+            const password = document.getElementById('loginPassword').value;
+            const roleLabel = document.querySelector('#loginCard .role-btn.active').textContent;
+
+            if (!validateUtils.phone(phone)) return alert('Please enter correct phone number format');
+            if (!validateUtils.password(password)) return alert('Password must be 6-20 characters');
+
+            const isStaff = roleLabel === 'Staff';
+            const position = isStaff ? document.getElementById('loginEmployeePosition').value : 'customer';
+
+            // Call backend login API
+            const resp = await fetchJSON('http://localhost/api/user_login.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_phone: phone,
+                    password: password
+                })
+            });
+
+            if (resp && resp.ok && resp.user) {
+                // Verify role match
+                if (isStaff && resp.user.user_type === 'customer') {
+                    alert('This account is registered as a customer, please login as customer');
+                    return;
+                }
+                if (!isStaff && resp.user.user_type !== 'customer') {
+                    alert('This account is staff, please login as staff');
+                    return;
+                }
+                // Check employee position match (staff can login to reception)
+                if (isStaff) {
+                    const userRole = resp.user.role_id;
+                    const allowedRoles = {
+                        'cleaner': ['cleaner'],
+                        'reception': ['reception', 'staff'],  // staff can also login to reception
+                        'manager': ['manager']
+                    };
+                    if (!allowedRoles[position] || !allowedRoles[position].includes(userRole)) {
+                        alert('Position mismatch. Your role is: ' + userRole);
+                        return;
+                    }
+                }
+
+                // Save user info
+                const user = {
+                    ...resp.user,
+                    user_phone: phone,
+                    phone: phone,
+                    staff_or_not: resp.user.user_type === 'customer' ? 'No' : 'Yes'
+                };
+                localStorage.setItem('hm_user', JSON.stringify(user));
+                localStorage.setItem('loggedIn', 'true');
+                
+                console.log('Login successful:', user);
+
+                // Redirect based on role
+                if (isStaff) {
+                    if (position === 'cleaner') {
+                        window.location.href = './Cleaner/Cleaner_HomePage.html';
+                    } else if (position === 'manager') {
+                        window.location.href = './Manager/Manager_HomePage.html';
+                    } else {
+                        window.location.href = './Front_desk/Staff_HomePage.html';
+                    }
+                } else {
+                    window.location.href = '../Customer/home.html';
+                }
+            } else {
+                alert('Login failed: ' + (resp?.error || 'Invalid credentials'));
+            }
+        });
+
+        // Registration submission
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const phone = document.getElementById('regPhone').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('regConfirmPassword').value;
+
+            if (!validateUtils.phone(phone)) return alert('Invalid phone number format (11 digits)');
+            if (!validateUtils.email(email)) return alert('Invalid email format');
+            if (!validateUtils.password(password)) return alert('Password must be 6-20 characters');
+            if (password !== confirm) return alert('Passwords do not match');
+
+            // Call backend register API
+            const resp = await fetchJSON('http://localhost/api/user_register.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_name: phone,
+                    user_phone: phone,
+                    user_email: email,
+                    password: password,
+                    user_type: 'customer',
+                    role_id: 'customer'
+                })
+            });
+
+            if (resp && resp.ok) {
+                alert('Registration successful! Please login.');
+                switchToLogin();
+                // Auto-fill phone number
+                document.getElementById('loginPhone').value = phone;
+            } else {
+                alert('Registration failed: ' + (resp?.error || 'Server error'));
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('forgotModal');
+            if (event.target === modal) closeForgotModal();
+        }
+    </script>
+</body>
+</html>
