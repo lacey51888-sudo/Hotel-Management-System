@@ -20,13 +20,6 @@ A web-based hotel management system developed using PHP, MySQL, HTML, CSS and Ja
 - CSS
 - JavaScript
 
-## Project Structure
-
-/source_code
-
-/database
-
-/screenshots
 
 ## Author
 
