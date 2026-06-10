@@ -10,7 +10,8 @@ A web-based hotel management system developed using PHP, MySQL, HTML, CSS and Ja
 - Room search and booking
 - Order management
 - Customer review system
-- Database-driven data storage
+- Staff task management
+- KPI and performance statistics
 
 ## Technologies
 
@@ -20,6 +21,11 @@ A web-based hotel management system developed using PHP, MySQL, HTML, CSS and Ja
 - CSS
 - JavaScript
 
+## Project Structure
+
+frontend/
+backend/
+database/
 
 ## Author
 
